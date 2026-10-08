@@ -27,6 +27,8 @@ const serpItemSchema = z
   .object({
     type: z.string().nullable().optional(),
     rank: z.number().nullable(),
+    // Optional: rows cached before this field existed don't carry it.
+    organicRank: z.number().nullable().optional(),
     title: z.string().nullable(),
     url: z.string().nullable(),
     domain: z.string().nullable(),
@@ -38,6 +40,7 @@ type SerpItem = z.infer<typeof serpItemSchema>;
 
 const SERP_ITEM_COLUMNS: McpTableColumn<SerpItem>[] = [
   { header: "rank", value: (item) => item.rank },
+  { header: "organic rank", value: (item) => item.organicRank },
   { header: "domain", value: (item) => item.domain },
   { header: "title", value: (item) => item.title },
   { header: "url", value: (item) => item.url },
@@ -53,6 +56,12 @@ const querySchema = z.object({
     .optional()
     .describe(
       "Optional city, county, or region inside the query's country, for a local SERP. Call search_serp_locations first and pass its locationName verbatim. Same price as a national SERP.",
+    ),
+  device: z
+    .enum(["desktop", "mobile"])
+    .optional()
+    .describe(
+      "Device to fetch the SERP for, default desktop. Use mobile to compare against a mobile rank tracker. Same price.",
     ),
 });
 
@@ -84,7 +93,7 @@ export const getSerpResultsTool = {
   config: {
     title: "Get Google SERP results",
     description:
-      "Fetch live Google organic search results for 1-10 keywords. Use this to inspect who ranks for a query, verify competitors, compare SERPs across keywords, or gather source URLs before content planning. Returns the top `depth` result rows per keyword (default 20). Charges credits per keyword: ~5 each at the default depth 20, and each additional 10 of depth adds ~2.5. A keyword fetched in this project in the last 12 hours with the same market and depth returns those rows again at no charge once the original call has finished, so if a response is lost, wait a minute and repeat the same call. Per-keyword errors don't fail the batch.",
+      "Fetch live Google organic search results for 1-10 keywords. Use this to inspect who ranks for a query, verify competitors, compare SERPs across keywords, or gather source URLs before content planning. Returns the top `depth` result rows per keyword (default 20). `rank` counts every SERP element (ads, People Also Ask, ...); `organicRank` counts organic results only and matches rank tracker positions. Charges credits per keyword: ~5 each at the default depth 20, and each additional 10 of depth adds ~2.5. A keyword fetched in this project in the last 12 hours with the same market, device, and depth returns those rows again at no charge once the original call has finished, so if a response is lost, wait a minute and repeat the same call. Per-keyword errors don't fail the batch.",
     inputSchema,
     outputSchema: z.looseObject({
       results: z.array(
@@ -133,6 +142,9 @@ export const getSerpResultsTool = {
             ...market,
             locationName: q.locationName,
             depth,
+            // Omitted for desktop, explicit or default, so desktop keys match
+            // rows cached before the device option existed.
+            device: q.device === "mobile" ? "mobile" : undefined,
           });
           const cached = z
             .array(serpItemSchema)
@@ -150,11 +162,14 @@ export const getSerpResultsTool = {
             ...market,
             locationName: q.locationName,
             depth,
+            device: q.device,
           });
           // Trim noise — return only essentials per item.
           const trimmed = items.slice(0, depth).map((item) => ({
             type: item.type,
             rank: item.rank_absolute ?? item.rank_group ?? null,
+            organicRank:
+              item.type === "organic" ? (item.rank_group ?? null) : null,
             title: item.title ?? null,
             url: item.url ?? null,
             domain: item.domain ?? null,

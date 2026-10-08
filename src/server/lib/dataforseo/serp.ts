@@ -93,7 +93,9 @@ export async function fetchLiveSerp(input: {
   depth?: number;
   /** Canonical DataForSEO name of a city, county, or region for a local SERP. */
   locationName?: string;
+  device?: "desktop" | "mobile";
 }): Promise<DataforseoApiResponse<SerpLiveItem[]>> {
+  const device = input.device ?? "desktop";
   const locationParams = input.locationName
     ? { location_name: input.locationName }
     : { location_code: input.locationCode };
@@ -104,8 +106,8 @@ export async function fetchLiveSerp(input: {
         keyword: input.keyword,
         ...locationParams,
         language_code: input.languageCode,
-        device: "desktop",
-        os: "windows",
+        device,
+        os: device === "desktop" ? "windows" : "android",
         depth: clampSerpDepth(input.depth ?? SERP_ANALYSIS_DEPTH),
       },
     ],
