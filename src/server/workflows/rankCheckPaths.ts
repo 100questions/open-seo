@@ -112,7 +112,10 @@ async function checkBatchLive(
     const reason: unknown = outcome.reason;
     const code = reason instanceof AppError ? reason.code : "UNKNOWN";
     const message = reason instanceof Error ? reason.message : String(reason);
-    firstError ??= message;
+    // Store the bare code so the app shows its provider-unavailable copy;
+    // DataForSEO's raw outage text ("Internal Server Error.") reads like our
+    // server broke.
+    firstError ??= code === "UPSTREAM_UNAVAILABLE" ? code : message;
     // DataForSEO erring on its own side is a provider flake, not our bug: the
     // keyword just misses this run and finalize reports it to the user. Every
     // other rejection (no credits, bad API key) is ours and stays at error.
@@ -214,7 +217,6 @@ async function collectQueuedRound(
   const completed: RankCheckResultWithDevice[] = [];
   const stillPending: PostedRankCheckTask[] = [];
   const failed: PostedRankCheckTask[] = [];
-  let firstError: string | null = null;
 
   for (let i = 0; i < tasks.length; i += TASK_GET_CONCURRENCY) {
     const chunk = tasks.slice(i, i + TASK_GET_CONCURRENCY);
@@ -243,7 +245,8 @@ async function collectQueuedRound(
         console.warn(
           `[rank-check] ${ctx.runId} task ${task.taskId} failed: ${result.value.message}`,
         );
-        firstError ??= result.value.message;
+        // No run error here: every failed task gets a live retry, which
+        // records its own error if it fails too.
         failed.push(task);
       } else {
         completed.push({ ...result.value.result, device: task.device });
@@ -251,9 +254,6 @@ async function collectQueuedRound(
     });
   }
 
-  if (firstError) {
-    await RankTrackingRepository.setRunErrorIfEmpty(ctx.runId, firstError);
-  }
   if (completed.length > 0) {
     await RankTrackingRepository.insertSnapshots(
       mapResultsToSnapshotRows(ctx.runId, completed),

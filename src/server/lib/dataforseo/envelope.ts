@@ -174,11 +174,32 @@ const UPSTREAM_FAILURE_STATUS_CODES = new Set([
   50402, // Target page took too long to respond.
 ]);
 
-function isUpstreamServerErrorTask(task: DataforseoTaskLike): boolean {
+function isUpstreamFailureStatus(statusCode: number | undefined): boolean {
   return (
-    task.status_code !== undefined &&
-    UPSTREAM_FAILURE_STATUS_CODES.has(task.status_code)
+    statusCode !== undefined && UPSTREAM_FAILURE_STATUS_CODES.has(statusCode)
   );
+}
+
+/**
+ * Error for a response whose top-level status isn't a success. DataForSEO
+ * reports whole-request outages there too (a top-level 50000 "Internal Server
+ * Error."), so those classify as UPSTREAM_UNAVAILABLE exactly like a failed
+ * task does.
+ */
+export function failedResponseError<T extends DataforseoTaskLike>(
+  response: DataforseoResponseLike<T> | null,
+  fallbackMessage: string,
+): AppError {
+  const message = response?.status_message || fallbackMessage;
+  if (!isUpstreamFailureStatus(response?.status_code)) {
+    return new AppError("INTERNAL_ERROR", message);
+  }
+  // Warn for the same reason as the task-level branch in assertOk.
+  console.warn("dataforseo.upstream-response-failed", {
+    status: response?.status_code,
+    message,
+  });
+  return new AppError("UPSTREAM_UNAVAILABLE", message);
 }
 
 /** Task lifecycle codes meaning "not done yet": Task Created / Task Handed /
@@ -209,7 +230,8 @@ type AssertOkOptions = {
  * returns that (SDK-typed) task. The single status / billing ladder shared by
  * every endpoint:
  *  - access / balance failure -> classified AppError
- *  - DataForSEO's own backend erring (5xxxx) -> UPSTREAM_UNAVAILABLE
+ *  - DataForSEO's own backend erring, on the response or the task ->
+ *    UPSTREAM_UNAVAILABLE
  *  - charged-but-failed task (cost present) -> DataforseoChargedTaskError
  */
 export function assertOk<T extends DataforseoTaskLike>(
@@ -229,7 +251,7 @@ export function assertOk<T extends DataforseoTaskLike>(
     const message = response.status_message || "DataForSEO request failed";
     throw (
       classify?.(response.status_code, message, classifyPath ?? "") ??
-      new AppError("INTERNAL_ERROR", message)
+      failedResponseError(response, message)
     );
   }
 
@@ -247,7 +269,7 @@ export function assertOk<T extends DataforseoTaskLike>(
     if (classified) throw classified;
 
     const detailedMessage = describeInvalidField(message, task);
-    const isUpstreamFailure = isUpstreamServerErrorTask(task);
+    const isUpstreamFailure = isUpstreamFailureStatus(task.status_code);
     // UPSTREAM_UNAVAILABLE is non-reportable, and the error handlers only log
     // what they capture, so warn here to keep the provider's failure rate — and
     // the only remaining record of the message — visible in Workers

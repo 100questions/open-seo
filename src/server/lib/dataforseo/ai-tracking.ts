@@ -5,6 +5,7 @@ import {
   isTaskInProgress,
   type DataforseoApiResponse,
   type DataforseoTaskLike,
+  failedResponseError,
 } from "@/server/lib/dataforseo/envelope";
 import { AppError } from "@/server/lib/errors";
 import {
@@ -112,10 +113,7 @@ export async function postAiTrackingTasks(
     { maxServerErrorRetries: 0 },
   );
   if (!response || response.status_code !== 20000) {
-    throw new AppError(
-      "INTERNAL_ERROR",
-      response?.status_message || "DataForSEO task_post failed",
-    );
+    throw failedResponseError(response, "DataForSEO task_post failed");
   }
   // Cost is summed over every entry, accepted or not, so anything DataForSEO
   // charged is metered.
@@ -160,10 +158,7 @@ export async function fetchAiTrackingTaskResult(input: {
   );
   const task = response?.tasks?.[0];
   if (!response || response.status_code !== 20000 || !task) {
-    throw new AppError(
-      "INTERNAL_ERROR",
-      response?.status_message || "DataForSEO task_get failed",
-    );
+    throw failedResponseError(response, "DataForSEO task_get failed");
   }
   if (isTaskInProgress(task)) return { status: "pending" };
   return aiTrackingAnswer(task);
@@ -204,10 +199,7 @@ export async function fetchAiTrackingLiveAnswer(
   });
   const task = response?.tasks?.[0];
   if (!response || response.status_code !== 20000 || !task) {
-    throw new AppError(
-      "INTERNAL_ERROR",
-      response?.status_message || "DataForSEO live request failed",
-    );
+    throw failedResponseError(response, "DataForSEO live request failed");
   }
   return {
     data: aiTrackingAnswer(task),

@@ -15,6 +15,7 @@ import { QueryState } from "@/client/components/QueryState";
 import { SkeletonCard } from "@/client/components/SkeletonPresets";
 import { Alert, AlertDescription } from "@/client/components/ui/alert";
 import { useHostedPlanGate } from "@/client/features/billing/HostedPlanGate";
+import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import { captureClientEvent } from "@/client/lib/posthog";
 import { FreePlanAlert } from "./FreePlanAlert";
 import { RankTrackingDetailHeader } from "./RankTrackingDetailHeader";
@@ -259,7 +260,8 @@ export function RankTrackingDomainDetail({
           <AlertDescription className="text-foreground">
             <p>
               <span className="font-medium">Last check failed.</span>{" "}
-              {latestRun.errorMessage}
+              {latestRun.errorMessage &&
+                getStandardErrorMessage(new Error(latestRun.errorMessage))}
             </p>
           </AlertDescription>
         </Alert>
