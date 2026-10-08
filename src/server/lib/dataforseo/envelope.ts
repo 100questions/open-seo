@@ -191,15 +191,32 @@ export function failedResponseError<T extends DataforseoTaskLike>(
   fallbackMessage: string,
 ): AppError {
   const message = response?.status_message || fallbackMessage;
-  if (!isUpstreamFailureStatus(response?.status_code)) {
-    return new AppError("INTERNAL_ERROR", message);
-  }
-  // Warn for the same reason as the task-level branch in assertOk.
-  console.warn("dataforseo.upstream-response-failed", {
-    status: response?.status_code,
+  return new AppError(
+    isUpstreamFailureStatus(response?.status_code)
+      ? "UPSTREAM_UNAVAILABLE"
+      : "INTERNAL_ERROR",
     message,
+  );
+}
+
+/**
+ * Warns when DataForSEO's own backend failed the whole request, for the same
+ * reason as the task-level branch in assertOk. Called where the response is
+ * parsed, since only the request knows its endpoint: a failed response carries
+ * no task path. Observability shows the object's `message` in place of the
+ * label, so the label is repeated as `event`.
+ */
+export function warnIfUpstreamResponseFailed(
+  response: DataforseoResponseLike<DataforseoTaskLike> | null,
+  path: string,
+): void {
+  if (!isUpstreamFailureStatus(response?.status_code)) return;
+  console.warn("dataforseo.upstream-response-failed", {
+    event: "dataforseo.upstream-response-failed",
+    path,
+    status: response?.status_code,
+    message: response?.status_message,
   });
-  return new AppError("UPSTREAM_UNAVAILABLE", message);
 }
 
 /** Task lifecycle codes meaning "not done yet": Task Created / Task Handed /
@@ -274,8 +291,11 @@ export function assertOk<T extends DataforseoTaskLike>(
     // what they capture, so warn here to keep the provider's failure rate — and
     // the only remaining record of the message — visible in Workers
     // Observability. Warn, not error: there is nothing in the app to fix.
+    // Observability shows the object's `message` in place of the label, so the
+    // label is repeated as `event`.
     if (isUpstreamFailure)
       console.warn("dataforseo.upstream-task-failed", {
+        event: "dataforseo.upstream-task-failed",
         path,
         status: task.status_code,
         message: task.status_message,

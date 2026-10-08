@@ -71,7 +71,6 @@ describe("assertOk", () => {
   );
 
   it("classifies a top-level 50000 'Internal Server Error.' as UPSTREAM_UNAVAILABLE", () => {
-    vi.spyOn(console, "warn").mockImplementation(() => {});
     expect(() =>
       assertOk({
         status_code: 50000,
