@@ -309,10 +309,12 @@
 }
 
 /* ── Hero ── */
+/* min-heights subtract the 44px Product Hunt banner (_marketing.tsx). Drop the
+   44px when the banner goes. */
 .itc-hero {
   align-items: center;
   display: flex;
-  min-height: calc(100svh - 150px);
+  min-height: calc(100svh - 194px);
   padding-top: clamp(104px, 12vh, 176px);
   padding-bottom: clamp(96px, 12vh, 144px);
   position: relative;
@@ -368,7 +370,7 @@
 }
 @media (max-width: 767px) {
   .itc-hero {
-    min-height: calc(100svh - 120px);
+    min-height: calc(100svh - 164px);
     padding-top: 72px;
     padding-bottom: 88px;
   }

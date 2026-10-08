@@ -165,13 +165,13 @@ function MarketingLayout() {
           target="_blank"
           rel="noopener noreferrer"
           className="group flex min-h-11 items-center justify-center gap-2 bg-[#ff6154] px-4 py-2.5 text-center text-sm font-semibold text-white transition-colors hover:bg-[#e9574c] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-white"
-          aria-label="OpenSEO just launched on Product Hunt. Upvote and comment."
+          aria-label="OpenSEO launched AI Visibility on Product Hunt. Upvote and comment."
         >
           <span className="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-white p-0.5">
             <img src="/product-hunt.svg" alt="" className="size-full" />
           </span>
           <span className="hidden sm:inline">
-            OpenSEO just launched on Product Hunt.
+            OpenSEO launched AI Visibility on Product Hunt.
           </span>
           <span className="inline-flex items-center gap-1 whitespace-nowrap underline decoration-white/55 underline-offset-4 group-hover:decoration-white">
             Upvote &amp; comment <span aria-hidden="true">&rarr;</span>
