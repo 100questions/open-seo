@@ -170,7 +170,9 @@ function MarketingLayout() {
           <span className="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-white p-0.5">
             <img src="/product-hunt.svg" alt="" className="size-full" />
           </span>
-          <span>OpenSEO just launched on Product Hunt.</span>
+          <span className="hidden sm:inline">
+            OpenSEO just launched on Product Hunt.
+          </span>
           <span className="inline-flex items-center gap-1 whitespace-nowrap underline decoration-white/55 underline-offset-4 group-hover:decoration-white">
             Upvote &amp; comment <span aria-hidden="true">&rarr;</span>
           </span>
