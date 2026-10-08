@@ -12,7 +12,12 @@ import { withMcpProjectAuth } from "@/server/mcp/project-auth";
 import { resolveMarket } from "@/shared/keyword-locations";
 import { assertLocalResearchLocation } from "@/server/features/keywords/services/research/local-volume";
 import { toolErrorMessage } from "@/server/mcp/tool-error-message";
-import { formatMcpTable, type McpTableColumn } from "@/server/mcp/table";
+import {
+  formatMcpTable,
+  sectionTableBudget,
+  truncatedCell,
+  type McpTableColumn,
+} from "@/server/mcp/table";
 import {
   languageCodeSchema,
   locationCodeSchema,
@@ -38,12 +43,22 @@ const serpItemSchema = z
 
 type SerpItem = z.infer<typeof serpItemSchema>;
 
+// `type` is load-bearing: the advanced SERP is a mixed list, so without it a
+// featured_snippet or people_also_ask row (which has no domain/title/url) reads
+// as an unlabeled organic position. Snippets are trimmed so the prose column
+// can't dominate the table — the full text stays in structuredContent.
 const SERP_ITEM_COLUMNS: McpTableColumn<SerpItem>[] = [
   { header: "rank", value: (item) => item.rank },
+  { header: "type", value: (item) => item.type },
   { header: "organic rank", value: (item) => item.organicRank },
   { header: "domain", value: (item) => item.domain },
   { header: "title", value: (item) => item.title },
   { header: "url", value: (item) => item.url },
+  {
+    header: "description",
+    value: (item) => item.description,
+    format: truncatedCell(120),
+  },
 ];
 
 const querySchema = z.object({
@@ -201,6 +216,9 @@ export const getSerpResultsTool = {
     );
 
     const okCount = results.filter((r) => r.ok).length;
+    // One budget for the whole response: ten queries split it, so a 10 × depth
+    // 100 call can't render 300k characters of text.
+    const budget = sectionTableBudget(results.length);
     const text =
       results
         .map((r) => {
@@ -210,7 +228,7 @@ export const getSerpResultsTool = {
           if (r.items.length === 0) {
             return `"${r.keyword}" (0 results)`;
           }
-          return `"${r.keyword}" (${r.items.length} results):\n${formatMcpTable(r.items, SERP_ITEM_COLUMNS)}`;
+          return `"${r.keyword}" (${r.items.length} results):\n${formatMcpTable(r.items, SERP_ITEM_COLUMNS, budget)}`;
         })
         .join("\n\n") +
       `\n\n${okCount} of ${results.length} queries succeeded.`;

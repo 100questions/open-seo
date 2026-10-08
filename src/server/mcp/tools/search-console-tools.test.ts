@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GscApiError, GscNotConnectedError } from "@/server/lib/gscErrors";
 import * as searchConsoleTools from "./search-console-tools";
-import { makeToolContext } from "./tool-test-support";
+import { makeToolContext, textContent } from "./tool-test-support";
 
 const mocks = vi.hoisted(() => ({
   getProjectForOrganization: vi.fn(),
@@ -242,6 +242,72 @@ describe("search console MCP tools", () => {
       reason: "gsc_oauth_not_configured",
     });
     expect(mocks.GscService.getPerformance).not.toHaveBeenCalled();
+  });
+
+  it("inspects multiple URLs and reports partial failures inline", async () => {
+    mocks.GscService.inspectUrls.mockResolvedValue({
+      siteUrl: "sc-domain:example.com",
+      connectedBy: "alice@example.com",
+      results: [
+        {
+          url: "https://example.com/a",
+          result: {
+            indexStatusResult: {
+              verdict: "PASS",
+              coverageState: "Indexed",
+              robotsTxtState: "ALLOWED",
+              lastCrawlTime: "2026-08-21T04:12:39Z",
+              googleCanonical: "https://example.com/a",
+              userCanonical: "https://example.com/a?utm_source=x",
+              crawledAs: "MOBILE",
+              referringUrls: ["https://example.com/"],
+            },
+            mobileUsabilityResult: { verdict: "PASS" },
+            richResultsResult: { verdict: "PASS" },
+          },
+        },
+        {
+          url: "https://example.com/bad",
+          result: null,
+          error: "Search Console API error (400)",
+        },
+      ],
+    });
+    const { inspectUrlsTool } = searchConsoleTools;
+
+    const result = await inspectUrlsTool.handler(
+      {
+        projectId: "project_1",
+        urls: ["https://example.com/a", "https://example.com/bad"],
+      },
+      toolContext,
+    );
+
+    expect(mocks.GscService.inspectUrls).toHaveBeenCalledWith(
+      expect.objectContaining({
+        projectId: "project_1",
+        urls: ["https://example.com/a", "https://example.com/bad"],
+      }),
+    );
+    expect(result.structuredContent).toMatchObject({
+      ok: true,
+      siteUrl: "sc-domain:example.com",
+    });
+    // Text-only clients see nothing but this block, so every inspection field
+    // Google returned has to land in it — including the canonical mismatch.
+    const text = textContent(result);
+    expect(text).toContain("PASS");
+    expect(text).toContain("robots.txt: ALLOWED");
+    expect(text).toContain("last crawl: 2026-08-21T04:12:39Z");
+    expect(text).toContain("crawled as: MOBILE");
+    expect(text).toContain(
+      "canonical: MISMATCH — Google selected https://example.com/a, page declares https://example.com/a?utm_source=x",
+    );
+    expect(text).toContain("mobile usability: PASS · rich results: PASS");
+    expect(text).toContain("referring URLs: https://example.com/");
+    // Fields Google didn't return are dropped, not printed as empty labels.
+    expect(text).not.toContain("sitemaps:");
+    expect(text).toContain("error:");
   });
 
   it("surfaces a not-connected message from inspect_urls", async () => {
