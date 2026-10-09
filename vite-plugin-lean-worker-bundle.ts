@@ -45,6 +45,17 @@ const EAGER_DENYLIST: Array<{ pattern: RegExp; expected: string }> = [
       "localize zod errors)",
   },
   {
+    // Startup CPU, not memory: every tool's zod input/output schemas and the
+    // SDK's protocol schemas are built at module scope, which pushed the main
+    // worker toward the 400 ms startup CPU limit.
+    pattern:
+      /node_modules\/@modelcontextprotocol\/server\/|\/src\/server\/mcp\/(server|transport|tools\/)/,
+    expected:
+      "lazy-loaded behind the dynamic imports of src/server/mcp/transport.ts " +
+      "(server.ts, oauth-provider.ts, api-key-auth.ts) and samChatTools.ts " +
+      "(SamChatAgent.beforeTurn)",
+  },
+  {
     // Pre-existing boundary from the site-audit engine, guarded here too.
     pattern: /node_modules\/cheerio\//,
     expected:
