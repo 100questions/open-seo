@@ -37,6 +37,8 @@ After adding the server, approve the OpenSEO login when prompted.
 
 ## Claude Desktop
 
+On a paid Claude plan, prefer the [OpenSEO plugin](/docs/claude-code-plugin#install-in-claude-cowork), which adds MCP and the SEO skills in one install. Use the custom connector below for MCP only or on the Free plan.
+
 1. Open Customize -> Connectors.
 2. Click Add (or +), then choose Add custom connector.
 3. Paste `https://app.openseo.so/mcp`.

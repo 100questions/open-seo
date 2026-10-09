@@ -11,6 +11,7 @@ Set up OpenSEO in this agent. Do what you can; guide me through anything that ne
 
 - Identify this agent and its version. Ask only if you cannot tell.
 - Check for an existing OpenSEO connection. Preserve other integrations and avoid duplicates.
+- Check for OpenSEO skills separately. A connection without skills is incomplete.
 
 ## 2. If this is ChatGPT
 
@@ -29,6 +30,7 @@ The official plugin bundles MCP + SEO skills, with OpenSEO namespacing and share
 
 - **Codex:** follow the [plugin guide](https://openseo.so/docs/codex-plugin).
 - **Claude Code:** follow the [plugin guide](https://openseo.so/docs/claude-code-plugin).
+- **Claude Cowork or the Claude desktop app:** you cannot install plugins from this chat, so don't run commands. Tell me to open **Customize** (in Cowork, the **Cowork** tab first) → **Plugins** → **+** or **Add** → **Add marketplace** → **Add from a repository**, enter `https://github.com/every-app/open-seo`, and install **OpenSEO**. Then I start a new task and type `/` to check that OpenSEO skills appear. If I already have a custom OpenSEO connector, have me remove it once the plugin signs in. Plugins need a paid plan. The plugin connects only to hosted OpenSEO, so skip it if `https://app.openseo.so/mcp` is not on openseo.so (self-hosted) or I'm on Free. Instead, have me add that endpoint under **Customize → Connectors** → **Add custom connector** and upload the [public skills](https://openseo.so/docs/skills/setup) in **Customize → Skills**. Then continue at step 5.
 - **Other agents:** verify plugin compatibility in their current documentation.
 - Check the installed client's help before running commands.
 
@@ -76,6 +78,7 @@ Want to know what was set up? Just ask.
 
 Adapt the template to the actual result:
 
+- If I must install the plugin by hand, as in Claude Cowork, replace step 1 with those clicks.
 - If installation failed, name the blocker and replace reload with the fix. If fully verified, say it is ready and omit reload. Do not claim sign-in failed or is required merely because tools need reloading.
 - Recommend this agent’s idiomatic way to invoke each installed skill: its native command, mention, picker, or natural-language request. Use the discovered skill name and plugin namespace; do not assume `/skill-name` works everywhere or create aliases to force it. Check the agent’s help or official documentation when unsure. If skills are unsupported, give equivalent plain-language requests using the connected tools. Recommend workflows; do not run them during installation.
 - Keep tool names such as whoami and list_projects in your checks, not the final reply. Omit versions, paths, connection details, skill counts, other integrations, and cleanup commands unless they explain the blocker or I ask. Do not add more sections or a verification checklist.

@@ -17,7 +17,7 @@ Working with OpenSEO:
 
 - [Agent setup prompt](https://openseo.so/agent-setup.txt): Plain-text setup instructions for an agent to follow.
 - [Agent setup](https://openseo.so/docs/agent-setup): The same prompt, manual steps for Claude Code, Codex, Hermes, Grok Bot, and other agents, and how to update skills.
-- [Claude Code plugin](https://openseo.so/docs/claude-code-plugin): Installs MCP and all twelve skills. Skills run as `/openseo:<skill>`.
+- [Claude plugin](https://openseo.so/docs/claude-code-plugin): Installs MCP and all twelve skills in Claude Code or Claude Cowork. Skills run as `/openseo:<skill>`.
 - [Codex plugin](https://openseo.so/docs/codex-plugin): Installs MCP and all twelve skills in Codex CLI. Type `$` to pick a skill.
 - [MCP setup](https://openseo.so/docs/mcp): Connect `https://app.openseo.so/mcp` in Claude Desktop, Cursor, Codex, or another MCP client, or use an API key for headless agents.
 - [Install skills without a plugin](https://openseo.so/docs/skills/setup): Add the skills to agents that don't support the plugin.

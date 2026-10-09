@@ -75,4 +75,4 @@ If a `codex plugin` command reports "unrecognized subcommand," run `codex plugin
 
 ## Other clients
 
-For ChatGPT web, use the [ChatGPT setup guide](/docs/chatgpt). For Claude Code, use the [OpenSEO plugin for Claude Code](/docs/claude-code-plugin) instead. For Claude Desktop, Cursor, or an API key setup, see [Set up OpenSEO MCP](/docs/mcp) and [Set up OpenSEO Agent Skills](/docs/skills/setup).
+For ChatGPT web, use the [ChatGPT setup guide](/docs/chatgpt). For Claude Code or Claude Cowork, use the [OpenSEO plugin for Claude](/docs/claude-code-plugin) instead. For Cursor or an API key setup, see [Set up OpenSEO MCP](/docs/mcp) and [Set up OpenSEO Agent Skills](/docs/skills/setup).
