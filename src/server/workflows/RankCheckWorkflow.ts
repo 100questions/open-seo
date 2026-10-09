@@ -377,12 +377,12 @@ export class RankCheckWorkflow extends WorkflowEntrypoint<
           runId,
         };
         // Scheduled checks use DataForSEO's task queue (~30% of live cost);
-        // manual checks stay on the live endpoint for instant results.
-        if (trigger === "scheduled") {
-          queueStats = await runQueuedCheck(step, checkContext);
-        } else {
-          await runLiveCheck(step, checkContext);
-        }
+        // manual checks stay on the live endpoint for instant results, and
+        // only the pairs the live endpoint missed go to the queue.
+        queueStats =
+          trigger === "scheduled"
+            ? await runQueuedCheck(step, checkContext)
+            : await runLiveCheck(step, checkContext);
       } catch (error) {
         // Batch failure — snapshots for completed batches are already
         // persisted incrementally. Continue to finalization.
