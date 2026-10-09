@@ -23,7 +23,11 @@ import {
 import type { ObservationWithPrompt } from "../repositories/AiVisibilityRepository";
 import { markdownToText } from "../providers/dataforseoEvidence";
 import { AiVisibilityError } from "./aiVisibilityErrors";
-import { aiMentionSpans, ownedAiDomain } from "./aiVisibilityMatching";
+import {
+  aiBrandNames,
+  aiMentionSpans,
+  ownedAiDomain,
+} from "./aiVisibilityMatching";
 
 export function aiRunView(
   run: RunRow,
@@ -266,7 +270,7 @@ function answerView(
           .filter((b) => b.mentioned)
           .map((b) => ({
             domain: b.domain,
-            spans: aiMentionSpans(answerText, [b.name, b.domain]).filter(
+            spans: aiMentionSpans(answerText, aiBrandNames(b)).filter(
               (span) => span.end <= limit,
             ),
           }))
