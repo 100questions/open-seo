@@ -33,6 +33,7 @@ import {
   type SaveConfigInput,
 } from "./useSaveConfigMutations";
 import { ScheduleField } from "./ScheduleField";
+import { SCHEDULED_RANK_CHECKS_PAUSED } from "@/shared/rank-tracking-pause";
 import {
   localScheduleTimeFrom,
   randomScheduleDate,
@@ -174,7 +175,9 @@ function RankTrackingConfigModalContent({
     targetingMode: existingConfig?.locationName ? "local" : "national",
     locationName: existingConfig?.locationName ?? undefined,
     devices: existingConfig?.devices ?? "mobile",
-    schedule: existingConfig?.scheduleInterval ?? "weekly",
+    schedule:
+      existingConfig?.scheduleInterval ??
+      (SCHEDULED_RANK_CHECKS_PAUSED ? "manual" : "weekly"),
     // Shown and edited in the browser's timezone; the server converts it to UTC.
     scheduleTime: localScheduleTimeFrom(
       existingConfig?.nextCheckAt
@@ -336,6 +339,7 @@ function RankTrackingConfigModalContent({
                   form.setFieldValue("scheduleTime", time);
                   setScheduleTimeEdited(true);
                 }}
+                scheduledChecksPaused={SCHEDULED_RANK_CHECKS_PAUSED}
               />
 
               <form.AppField name="serpDepth">

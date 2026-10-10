@@ -22,11 +22,10 @@ import {
 } from "./rankCheckRunGuards";
 import {
   estimateRankCheckCredits,
-  computeNextCheckAt,
-  isScheduledRankTrackingInterval,
   MAX_CONFIGS_PER_PROJECT,
   rankCheckCostApprovalError,
 } from "@/shared/rank-tracking";
+import { resolveNextCheckAt } from "./configSchedule";
 import {
   getIsoCountryCode,
   resolveKeywordDataLanguage,
@@ -211,33 +210,6 @@ async function updateConfig(
   }
 
   await RankTrackingRepository.updateConfig(configId, projectId, updates);
-}
-
-function resolveNextCheckAt(
-  scheduleInterval: RankTrackingConfig["scheduleInterval"],
-  scheduleTime: RankCheckScheduleTime | undefined,
-): string | null {
-  if (isScheduledRankTrackingInterval(scheduleInterval)) {
-    // Without one the check would quietly repeat on whatever day today is.
-    if (
-      scheduleInterval === "weekly" &&
-      scheduleTime &&
-      scheduleTime.weekday === undefined
-    ) {
-      throw new AppError(
-        "VALIDATION_ERROR",
-        "A weekly schedule time needs a weekday",
-      );
-    }
-    return computeNextCheckAt(scheduleInterval, null, scheduleTime);
-  }
-  if (scheduleTime) {
-    throw new AppError(
-      "VALIDATION_ERROR",
-      "A schedule time needs a daily, weekly, or monthly schedule",
-    );
-  }
-  return null;
 }
 
 // ---------------------------------------------------------------------------

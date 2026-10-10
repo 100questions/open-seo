@@ -7,6 +7,7 @@ import { resolveUserContextFromHeaders } from "@/middleware/ensure-user/resolve"
 import { ProjectRepository } from "@/server/features/projects/repositories/ProjectRepository";
 import { SamSessionRepository } from "@/server/features/sam/SamSessionRepository";
 import { runScheduledRankChecks } from "@/server/features/rank-tracking/services/scheduledRankChecks";
+import { SCHEDULED_RANK_CHECKS_PAUSED } from "@/shared/rank-tracking-pause";
 import { reconcileStaleAudits } from "@/server/features/audit/services/auditReconciler";
 import { getOrCreateOrganizationCustomer } from "@/server/billing/subscription";
 import { isHostedServerAuthMode } from "@/server/lib/runtime-env";
@@ -240,7 +241,9 @@ export default {
     }
     // Scope a per-request Postgres client for the cron run (no-op in D1 mode).
     const checks = await Promise.allSettled([
-      withPgClient(() => runScheduledRankChecks(env)),
+      SCHEDULED_RANK_CHECKS_PAUSED
+        ? Promise.resolve()
+        : withPgClient(() => runScheduledRankChecks(env)),
       withPgClient(async () => {
         const { runScheduledAiVisibility } =
           await import("@/server/features/ai-visibility/services/scheduledAiVisibility");

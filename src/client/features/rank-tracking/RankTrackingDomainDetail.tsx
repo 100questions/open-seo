@@ -17,6 +17,7 @@ import { Alert, AlertDescription } from "@/client/components/ui/alert";
 import { useHostedPlanGate } from "@/client/features/billing/HostedPlanGate";
 import { captureClientEvent } from "@/client/lib/posthog";
 import { FreePlanAlert } from "./FreePlanAlert";
+import { ScheduledChecksPausedAlert } from "./ScheduledChecksPausedAlert";
 import { RankRunAlerts } from "./RankRunAlerts";
 import { RankTrackingDetailHeader } from "./RankTrackingDetailHeader";
 import { RankTrackingOverview } from "./RankTrackingOverview";
@@ -235,6 +236,8 @@ export function RankTrackingDomainDetail({
 
   return (
     <div className="space-y-3">
+      <ScheduledChecksPausedAlert />
+
       {config.lastSkipReason === "insufficient_credits" && (
         <Alert variant="warning">
           <AlertTriangle />
