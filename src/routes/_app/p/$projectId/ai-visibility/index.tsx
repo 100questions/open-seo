@@ -20,7 +20,7 @@ export const Route = createFileRoute("/_app/p/$projectId/ai-visibility/")({
     // The prompt table reads the latest run's answers, known from a fresh
     // tracker: a cached one can predate the latest run.
     void queryClient
-      .fetchQuery(aiTrackerQueryOptions(projectId))
+      .fetchQuery({ ...aiTrackerQueryOptions(projectId), staleTime: 0 })
       .then((state) => {
         const runId = state.recentRuns[0]?.id;
         if (runId)

@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AiVisibilityRepository as repo } from "../repositories/AiVisibilityRepository";
 import type { RunRow } from "../repositories/AiVisibilityRepository";
+import { aiPageResultsSchema } from "@/types/schemas/ai-visibility";
 import {
   loadAiAnswer,
+  loadAiPageResults,
   loadAiResults,
   loadAiSources,
 } from "./aiVisibilityResults";
@@ -155,6 +157,20 @@ describe("AI visibility results", () => {
       competitorGap: false,
     });
     expect(results.runId).toBe(baseline);
+  });
+
+  it("gives the app a run's every answer in one read, past the MCP page size", async () => {
+    await seedRun(
+      "baseline",
+      Array.from({ length: 51 }, () => ({ markdown: "x" })),
+    );
+    // Parsed as the server function parses it, so a default page size shows.
+    const input = aiPageResultsSchema.parse({
+      projectId: crypto.randomUUID(),
+      branded: "all",
+    });
+    const results = await loadAiPageResults({ ...input, projectId });
+    expect(results.rows).toHaveLength(51);
   });
 
   it("finds competitor gaps: a competitor appears where the brand is neither named nor cited", async () => {

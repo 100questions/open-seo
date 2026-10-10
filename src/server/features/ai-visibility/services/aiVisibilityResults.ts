@@ -12,6 +12,7 @@ import type {
   AiSources,
 } from "@/shared/ai-visibility";
 import type {
+  AiPageResultsInput,
   AiResultsInput,
   AiSourcesInput,
 } from "@/types/schemas/ai-visibility";
@@ -87,7 +88,9 @@ function rowsFor(
   }));
 }
 
-async function loadAiResultSet(rawInput: AiResultsInput) {
+async function loadAiResultSet(
+  rawInput: Omit<AiResultsInput, "cursor" | "limit">,
+) {
   const input = {
     ...rawInput,
     runId: rawInput.runId ?? undefined,
@@ -184,15 +187,18 @@ export async function loadAiResults(input: AiResultsInput): Promise<AiResults> {
   return resultPage(result, input);
 }
 
-/** App-only history metadata; the MCP results contract remains unchanged. */
-export async function loadAiPageResults(input: AiResultsInput) {
+/**
+ * App reads: up to limit rows of the bounded set in one call, with history
+ * metadata. The MCP results contract remains paged.
+ */
+export async function loadAiPageResults(input: AiPageResultsInput) {
   const { result, runs } = await loadAiResultSet(input);
   return {
-    ...resultPage(result, input),
-    historyRuns:
-      input.includeHistory && !input.cursor
-        ? runs.map(({ id, createdAt, trigger }) => ({ id, createdAt, trigger }))
-        : [],
+    ...result,
+    rows: result.rows.slice(0, input.limit),
+    historyRuns: input.includeHistory
+      ? runs.map(({ id, createdAt, trigger }) => ({ id, createdAt, trigger }))
+      : [],
   };
 }
 
