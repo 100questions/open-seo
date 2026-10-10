@@ -15,9 +15,9 @@ import { QueryState } from "@/client/components/QueryState";
 import { SkeletonCard } from "@/client/components/SkeletonPresets";
 import { Alert, AlertDescription } from "@/client/components/ui/alert";
 import { useHostedPlanGate } from "@/client/features/billing/HostedPlanGate";
-import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import { captureClientEvent } from "@/client/lib/posthog";
 import { FreePlanAlert } from "./FreePlanAlert";
+import { RankRunAlerts } from "./RankRunAlerts";
 import { RankTrackingDetailHeader } from "./RankTrackingDetailHeader";
 import { RankTrackingOverview } from "./RankTrackingOverview";
 import { RankTrackingTable } from "./RankTrackingTable";
@@ -245,27 +245,7 @@ export function RankTrackingDomainDetail({
         </Alert>
       )}
 
-      {latestRun?.maybeStale && (
-        <Alert variant="warning">
-          <AlertTriangle />
-          <AlertDescription className="text-foreground">
-            This run may be unresponsive and will be cleaned up automatically.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {latestRun?.status === "failed" && (
-        <Alert variant="destructive">
-          <AlertTriangle />
-          <AlertDescription className="text-foreground">
-            <p>
-              <span className="font-medium">Last check failed.</span>{" "}
-              {latestRun.errorMessage &&
-                getStandardErrorMessage(new Error(latestRun.errorMessage))}
-            </p>
-          </AlertDescription>
-        </Alert>
-      )}
+      <RankRunAlerts run={latestRun} />
 
       <FreePlanAlert visible={planStatus === "free"} />
 

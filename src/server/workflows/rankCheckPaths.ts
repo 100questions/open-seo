@@ -214,9 +214,13 @@ export async function runLiveCheck(
   );
   // No live fallback here: these pairs already had their live attempt, and a
   // second one could take the run past the credits the user approved.
+  // A "not found" from the queue isn't saved either: queued SERPs often miss a
+  // domain the live endpoint finds, so the pair stays "Not checked" and keeps
+  // its previous position instead of reading as lost.
   return runQueuedCheck(step, ctx, {
     taskInputs: missing,
     liveFallback: false,
+    saveNotFound: false,
   });
 }
 
@@ -265,6 +269,7 @@ interface CollectRoundOutcome {
 async function collectQueuedRound(
   ctx: CheckContext,
   tasks: PostedRankCheckTask[],
+  saveNotFound: boolean,
 ): Promise<CollectRoundOutcome> {
   const completed: RankCheckResultWithDevice[] = [];
   const stillPending: PostedRankCheckTask[] = [];
@@ -300,7 +305,7 @@ async function collectQueuedRound(
         // No run error here: a live call records it. That is the live
         // fallback, or for a manual retry, the live attempt before the queue.
         failed.push(task);
-      } else {
+      } else if (saveNotFound || result.value.result.position !== null) {
         completed.push({ ...result.value.result, device: task.device });
       }
     });
@@ -340,7 +345,8 @@ export interface QueuedCheckStats {
  * polls task_get for ~15 minutes, writing snapshots incrementally as tasks
  * complete. Anything still unfinished after the polling window — plus tasks
  * DataForSEO rejected or failed — gets one shot at the live endpoint so a run
- * never hangs on a stuck queue, unless `liveFallback` is false. Billing
+ * never hangs on a stuck queue, unless `liveFallback` is false. With
+ * `saveNotFound` false, a result without the domain isn't saved. Billing
  * happens at task_post (and per live-fallback batch).
  */
 export async function runQueuedCheck(
@@ -349,7 +355,12 @@ export async function runQueuedCheck(
   {
     taskInputs = expandToTaskInputs(ctx.keywords, ctx.devices),
     liveFallback = true,
-  }: { taskInputs?: RankCheckTaskInput[]; liveFallback?: boolean } = {},
+    saveNotFound = true,
+  }: {
+    taskInputs?: RankCheckTaskInput[];
+    liveFallback?: boolean;
+    saveNotFound?: boolean;
+  } = {},
 ): Promise<QueuedCheckStats> {
   // Post all tasks to the queue, <=100 per request, one metered step each.
   // A failed chunk must not abort the run — earlier chunks were already
@@ -424,7 +435,7 @@ export async function runQueuedCheck(
         step,
         `collect-${round}`,
         COLLECT_STEP_CONFIG,
-        () => collectQueuedRound(ctx, batch),
+        () => collectQueuedRound(ctx, batch, saveNotFound),
       );
     } catch (error) {
       console.warn(`[rank-check] ${ctx.runId} collect-${round} failed:`, error);

@@ -114,6 +114,32 @@ describe("runLiveCheck", () => {
     expect(stats).toMatchObject({ queueTasks: 11, fallbackTasks: 0 });
   });
 
+  it("leaves a pair unchecked when its queued retry doesn't find the domain", async () => {
+    mocks.getSnapshotsForRun.mockResolvedValue([]);
+    mocks.fetchRankCheckTaskResult.mockImplementation(
+      async (task: RankCheckTaskInput) => ({
+        status: "completed",
+        result: {
+          ...task,
+          position: task.keywordId === "kw_0" ? null : 5,
+          url: null,
+          serpFeatures: [],
+        },
+      }),
+    );
+
+    await runManualCheck();
+
+    // The queue round saves every pair except kw_0's not-found.
+    expect(mocks.insertSnapshots).toHaveBeenLastCalledWith(
+      keywords
+        .slice(1)
+        .map((kw): unknown =>
+          expect.objectContaining({ trackingKeywordId: kw.id, position: 5 }),
+        ),
+    );
+  });
+
   it("skips the queue when the live endpoint checked every pair", async () => {
     mocks.getSnapshotsForRun.mockResolvedValue(
       keywords.map((kw) => ({ trackingKeywordId: kw.id, device: "desktop" })),
