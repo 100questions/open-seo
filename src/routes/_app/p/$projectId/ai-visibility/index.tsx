@@ -5,8 +5,8 @@ import { PROMPT_TRACKING_TABS } from "@/client/features/ai-visibility/PromptTrac
 import {
   aiRunResultsQueryOptions,
   aiTrackerQueryOptions,
+  aiTrendQueryOptions,
 } from "@/client/features/ai-visibility/shared";
-import { aiTrendQueryOptions } from "@/client/features/ai-visibility/VisibilityTrend";
 import { queryClient } from "@/client/tanstack-db/queryClient";
 
 const tabs = PROMPT_TRACKING_TABS.map((item) => item.value);

@@ -11,6 +11,7 @@ import {
   getAiResearchSetup,
   getAiVisibilityRun,
   getAiVisibilityTracker,
+  getAiVisibilityTrend,
   getAiVisibilityResults,
   listAiResearchKeywords,
 } from "@/serverFunctions/ai-visibility";
@@ -61,6 +62,14 @@ export const aiResearchKeywordsQueryOptions = (projectId: string) =>
   queryOptions({
     queryKey: [...aiVisibilityKey(projectId), "researchKeywords"],
     queryFn: () => listAiResearchKeywords({ data: { projectId } }),
+  });
+
+export type AiTrendDays = 7 | 28 | 90;
+
+export const aiTrendQueryOptions = (projectId: string, days: AiTrendDays) =>
+  queryOptions({
+    queryKey: [...aiVisibilityKey(projectId), "results", "trend", days],
+    queryFn: () => getAiVisibilityTrend({ data: { projectId, days } }),
   });
 
 /** Every answer in a run, so each prompt can show its per-engine result. */
