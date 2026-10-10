@@ -28,10 +28,7 @@ import {
   openUpgradeCheckout,
   prefetchUpgradeCheckout,
 } from "@/client/features/billing/checkout";
-import {
-  BILLING_TABS,
-  BillingTabs,
-} from "@/client/features/billing/BillingTabs";
+import { BillingTabs } from "@/client/features/billing/BillingTabs";
 import { parseTopUpAmount } from "@/client/features/billing/HostedBillingContentUtils";
 import { billingUsageEventsQueryOptions } from "@/client/features/billing/useBillingUsageEvents";
 import { useCreditBalance } from "@/client/features/billing/useCreditBalance";
@@ -44,7 +41,7 @@ import {
   createBillingPortalSession,
   createTopUpCheckout,
 } from "@/serverFunctions/billing";
-import { BILLING_ROUTE } from "@/shared/billing";
+import { BILLING_ROUTE, BILLING_TABS } from "@/shared/billing";
 
 export const Route = createFileRoute("/_app/billing")({
   validateSearch: z.object({

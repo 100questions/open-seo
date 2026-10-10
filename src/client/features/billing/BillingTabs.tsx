@@ -4,12 +4,7 @@ import { TabsTrigger } from "@/client/components/ui/tabs";
 import { BillingFeatureBreakdown } from "@/client/features/billing/BillingFeatureBreakdown";
 import { BillingInvoices } from "@/client/features/billing/BillingInvoices";
 import { BillingUsageChart } from "@/client/features/billing/BillingUsageChart";
-
-export const BILLING_TABS = [
-  { value: "usage", label: "Usage" },
-  { value: "invoices", label: "Invoices" },
-] as const;
-type BillingTab = (typeof BILLING_TABS)[number]["value"];
+import { BILLING_TABS, type BillingTab } from "@/shared/billing";
 
 /**
  * Usage and, for owners, invoices in one card with a tab row. Members see
