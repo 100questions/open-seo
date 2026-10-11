@@ -79,7 +79,7 @@ export class AiVisibilityWorkflow extends WorkflowEntrypoint<
     const { runId, customer } = payload;
     const markFailed = async (error: unknown) => {
       await pgStep(step, "mark-failed", SINGLE_ATTEMPT, () =>
-        markAiRunFailed(runId, error),
+        markAiRunFailed(runId),
       );
       throw error;
     };
@@ -124,7 +124,7 @@ export class AiVisibilityWorkflow extends WorkflowEntrypoint<
     };
     try {
       plan = await pgStep(step, "prepare", SINGLE_ATTEMPT, () =>
-        prepareAiRun(runId, customer),
+        prepareAiRun(runId),
       );
       // Live runs save each live batch as it returns, so nothing is left
       // pending to poll.

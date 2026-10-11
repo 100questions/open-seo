@@ -333,7 +333,7 @@ describe("AI answer collection", () => {
       branded: false,
     });
 
-    const plan = await prepareAiRun(runId, customer);
+    const plan = await prepareAiRun(runId);
 
     expect(plan.modelBatches).toMatchObject([
       { engine: "claude", tasks: [{ tag: "answer-claude" }] },
@@ -344,7 +344,7 @@ describe("AI answer collection", () => {
   });
 
   it("collects a manual run live, saving answers and failing rejected calls", async () => {
-    expect(await prepareAiRun(runId, customer)).toMatchObject({ live: true });
+    expect(await prepareAiRun(runId)).toMatchObject({ live: true });
     dataforseo.trackingLiveBatch.mockResolvedValue([
       liveAnswer,
       { status: "rejected", reason: new Error("Timed out") },

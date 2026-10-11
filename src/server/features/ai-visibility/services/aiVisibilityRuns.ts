@@ -10,7 +10,12 @@ import {
   getOptionalEnvValue,
   isHostedServerAuthMode,
 } from "@/server/lib/runtime-env";
-import type { BillingCustomerContext } from "@/server/billing/subscription";
+import {
+  getOrCreateOrganizationCustomer,
+  getUsageCreditsRemaining,
+  type BillingCustomerContext,
+} from "@/server/billing/subscription";
+import { AppError } from "@/server/lib/errors";
 import type { AiRun } from "@/shared/ai-visibility";
 import type { RunAiCheckInput } from "@/types/schemas/ai-visibility";
 import { requireConfiguration } from "./aiVisibilityMutation";
@@ -89,6 +94,32 @@ export async function startRun(
       "NO_ACTIVE_PROMPTS",
       "Add or unpause prompts before starting a check.",
     );
+  // Hosted checks need credits for every answer before they start, like rank
+  // checks. The tracker says why no check ran, whichever path started it.
+  if (await isHostedServerAuthMode()) {
+    const required = aiCostForAnswers(
+      scope.prompts.flatMap(() => scope.engines),
+      true,
+      trigger === "scheduled" ? "queued" : "live",
+    ).costCredits;
+    // getOrCreate: an org's first check can come before its Autumn customer.
+    const { id } = await getOrCreateOrganizationCustomer(billing);
+    const credits = await getUsageCreditsRemaining(id);
+    // Clamp at 0: research setup can overdraw monthly credits, and top-up
+    // credits still pay for the check.
+    const available =
+      Math.max(credits.monthlyRemaining, 0) +
+      Math.max(credits.topupRemaining, 0);
+    if (available < required) {
+      await repo.updateTracker(config.tracker.id, {
+        lastSkipReason: "INSUFFICIENT_CREDITS",
+      });
+      throw new AppError(
+        "INSUFFICIENT_CREDITS",
+        "Not enough credits for this AI visibility check.",
+      );
+    }
+  }
   const own = { name: project.name, domain: project.domain };
   // Two attempts: once normally, once after failing a stale blocker.
   for (let attempt = 0; attempt < 2; attempt++) {

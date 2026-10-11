@@ -18,7 +18,6 @@ export class AiVisibilityError extends AppError {
 export const AI_ANSWER_FAILURES = {
   notArrived: "No answer arrived within the collection window.",
   runFailed: "The last check could not collect answers.",
-  noCredits: "Not enough credits for the last check.",
   notStarted: "Collection could not start.",
   stoppedBeforeStart: "Collection stopped before it started.",
   stopped: "Collection stopped before it finished.",

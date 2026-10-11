@@ -152,12 +152,12 @@ describe("AI visibility workflow", () => {
     );
   });
 
-  it("fails the run when preparation fails, such as when credits run out", async () => {
-    const error = new Error("Not enough credits");
+  it("fails the run when preparation fails", async () => {
+    const error = new Error();
     mocks.prepare.mockRejectedValue(error);
     await expect(execute()).rejects.toThrow(error);
     expect(mocks.post).not.toHaveBeenCalled();
-    expect(mocks.markFailed).toHaveBeenCalledExactlyOnceWith("run", error);
+    expect(mocks.markFailed).toHaveBeenCalledExactlyOnceWith("run");
   });
 
   it("does not log a rejected poll sleep as a failure, but still marks the run failed", async () => {
@@ -166,6 +166,6 @@ describe("AI visibility workflow", () => {
     const consoleError = vi.spyOn(console, "error");
     await expect(execute()).rejects.toThrow(error);
     expect(consoleError).not.toHaveBeenCalled();
-    expect(mocks.markFailed).toHaveBeenCalledExactlyOnceWith("run", error);
+    expect(mocks.markFailed).toHaveBeenCalledExactlyOnceWith("run");
   });
 });

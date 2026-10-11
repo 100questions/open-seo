@@ -1,5 +1,4 @@
 import type { BillingCustomerContext } from "@/server/billing/subscription";
-import { getUsageCreditsRemaining } from "@/server/billing/subscription";
 import {
   createDataforseoClient,
   fetchAiTrackingTaskResult,
@@ -10,7 +9,6 @@ import {
 import { DataforseoChargedTaskError } from "@/server/lib/dataforseo/envelope";
 import { resolveLatestLlmModelName } from "@/server/lib/dataforseo/llm-models";
 import { AppError, asAppError } from "@/server/lib/errors";
-import { isHostedServerAuthMode } from "@/server/lib/runtime-env";
 import type { ErrorCode } from "@/shared/error-codes";
 import { getIsoCountryCode } from "@/shared/keyword-locations";
 import {
@@ -25,7 +23,6 @@ import {
   type ParsedAiAnswer,
 } from "../providers/dataforseoEvidence";
 import { aiBrands } from "./aiVisibilityConfiguration";
-import { aiCostForAnswers } from "./aiVisibilityCost";
 import { AI_ANSWER_FAILURES } from "./aiVisibilityErrors";
 import { matchAiBrand } from "./aiVisibilityMatching";
 import { failAiRun } from "./aiVisibilityRuns";
@@ -80,12 +77,11 @@ function errorMessage(error: unknown) {
  * Marks the run running and groups its answers into batches. Manual and
  * baseline runs collect live answers so the user sees results sooner.
  * Scheduled runs use the cheaper standard queue. Claude and Perplexity have no
- * LLM Scraper, so every run asks their model API (`modelBatches`). Hosted runs
- * first check that credits cover the whole check, like rank checks.
+ * LLM Scraper, so every run asks their model API (`modelBatches`). startRun
+ * checked credits before the run was created.
  */
 export async function prepareAiRun(
   runId: string,
-  customer: BillingCustomerContext,
 ): Promise<
   { market: AiRunMarket; modelBatches: AiTaskBatch[] } & (
     | { live: false; batches: AiTaskBatch[] }
@@ -99,19 +95,6 @@ export async function prepareAiRun(
     (row) => row.status === "pending",
   );
   const live = run.trigger !== "scheduled";
-  if (await isHostedServerAuthMode()) {
-    const required = aiCostForAnswers(
-      pending.map((row) => row.engine),
-      true,
-      live ? "live" : "queued",
-    ).costCredits;
-    const credits = await getUsageCreditsRemaining(customer.organizationId);
-    if (credits.monthlyRemaining + credits.topupRemaining < required)
-      throw new AppError(
-        "INSUFFICIENT_CREDITS",
-        "Not enough credits for this AI visibility check.",
-      );
-  }
   await repo.updateRun(runId, { status: "running" });
   const market = {
     locationCode: run.locationCode,
@@ -456,11 +439,8 @@ export async function finalizeAiRun(runId: string) {
 }
 
 /** The workflow's failure path: fail the run and say why on the tracker. */
-export async function markAiRunFailed(runId: string, error: unknown) {
-  const message =
-    error instanceof AppError && error.code === "INSUFFICIENT_CREDITS"
-      ? AI_ANSWER_FAILURES.noCredits
-      : AI_ANSWER_FAILURES.runFailed;
+export async function markAiRunFailed(runId: string) {
+  const message = AI_ANSWER_FAILURES.runFailed;
   await failAiRun(runId, message);
   const run = await repo.getRunInternal(runId);
   if (run) await repo.updateTracker(run.trackerId, { lastSkipReason: message });
