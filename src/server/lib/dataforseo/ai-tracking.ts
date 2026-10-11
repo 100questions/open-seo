@@ -3,6 +3,7 @@ import { MAX_TASKS_PER_POST } from "@/server/lib/dataforseo/shared";
 import {
   isNoResultsTask,
   isTaskInProgress,
+  isUpstreamFailureStatus,
   type DataforseoApiResponse,
   type DataforseoTaskLike,
   failedResponseError,
@@ -140,7 +141,12 @@ export async function postAiTrackingTasks(
 }
 
 export type AiTrackingAnswer =
-  | { status: "failed"; message: string }
+  | {
+      status: "failed";
+      message: string;
+      /** DataForSEO's own backend failed the task, so a new one can succeed. */
+      retryable: boolean;
+    }
   /** `result` is null when Google returned no results page. */
   | { status: "completed"; result: unknown };
 type AiTrackingTaskOutcome = { status: "pending" } | AiTrackingAnswer;
@@ -173,6 +179,7 @@ function aiTrackingAnswer(
       status: "failed",
       message:
         task.status_message || `DataForSEO task failed (${task.status_code})`,
+      retryable: isUpstreamFailureStatus(task.status_code),
     };
   }
   return { status: "completed", result: task.result?.[0] ?? null };

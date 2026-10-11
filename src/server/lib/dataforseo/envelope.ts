@@ -174,7 +174,9 @@ const UPSTREAM_FAILURE_STATUS_CODES = new Set([
   50402, // Target page took too long to respond.
 ]);
 
-function isUpstreamFailureStatus(statusCode: number | undefined): boolean {
+export function isUpstreamFailureStatus(
+  statusCode: number | undefined,
+): boolean {
   return (
     statusCode !== undefined && UPSTREAM_FAILURE_STATUS_CODES.has(statusCode)
   );
