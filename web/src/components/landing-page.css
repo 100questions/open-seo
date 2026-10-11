@@ -89,7 +89,7 @@
 }
 @media (max-width: 767px) {
   .itc-section {
-    padding: 64px 0;
+    padding: 48px 0 32px;
   }
 }
 
@@ -300,8 +300,8 @@
   transform: translate(-50%, -50%);
   display: grid;
   place-items: center;
-  width: clamp(64px, 8vw, 96px);
-  height: clamp(64px, 8vw, 96px);
+  width: 64px;
+  height: 64px;
   border-radius: 50%;
   background: #ffffff;
   color: var(--ink);
@@ -312,9 +312,8 @@
 .itc-hero {
   align-items: center;
   display: flex;
-  min-height: calc(100svh - 150px);
-  padding-top: clamp(104px, 12vh, 176px);
-  padding-bottom: clamp(96px, 12vh, 144px);
+  min-height: calc(100svh - 76px - 160px);
+  padding: 40px 0;
   position: relative;
   text-align: center;
 }
@@ -326,18 +325,15 @@
   transition: background-color 0.18s ease;
 }
 .itc-hero .itc-container {
+  width: 100%;
   position: relative;
   z-index: 1;
 }
-/* Out of flow so the hero's vertical centering ignores the laurel and the
-   headline block sits exactly where it did without it. */
+/* Launch proof leads into the headline. */
 .itc-hero-ph-laurel {
   color: var(--ink);
   display: inline-flex;
-  position: absolute;
-  bottom: calc(100% + 28px);
-  left: 50%;
-  transform: translateX(-50%);
+  margin: 0 auto 24px;
   opacity: 0.85;
   transition: opacity 0.18s ease;
 }
@@ -349,14 +345,14 @@
   width: auto;
 }
 @media (max-width: 767px) {
-  .itc-hero-ph-laurel {
-    bottom: calc(100% + 20px);
-  }
   .itc-hero-ph-laurel svg {
     height: 38px;
   }
 }
 .itc-hero-title {
+  font-size: clamp(36px, 4.5vw, 58px);
+  line-height: 1.1;
+  text-wrap: balance;
   color: var(--ink);
   transition: color 0.18s ease;
 }
@@ -368,9 +364,8 @@
 }
 @media (max-width: 767px) {
   .itc-hero {
-    min-height: calc(100svh - 120px);
-    padding-top: 72px;
-    padding-bottom: 88px;
+    min-height: calc(100svh - 64px - 140px);
+    padding: 32px 0;
   }
 }
 .itc-hero-ctas {
@@ -579,9 +574,6 @@
   border-top: 1px solid var(--hairline);
   padding: 84px 0 92px;
 }
-.itc-hero + .itc-mcp-section {
-  margin-top: 24px;
-}
 .itc-mcp-grid {
   display: grid;
   gap: 48px;
@@ -595,10 +587,7 @@
 }
 @media (max-width: 767px) {
   .itc-mcp-section {
-    padding: 64px 0;
-  }
-  .itc-hero + .itc-mcp-section {
-    margin-top: 28px;
+    padding: 48px 0 32px;
   }
 }
 .itc-terminal {
@@ -842,4 +831,18 @@
   .itc-discord {
     padding: 12px;
   }
+}
+
+/* The demo peeks below the centered hero. */
+.itc-hero-followup {
+  padding: 0 0 56px;
+  text-align: center;
+}
+.itc-hero-demo {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+.itc-demo-video video {
+  height: auto;
+  aspect-ratio: 1440 / 900;
 }

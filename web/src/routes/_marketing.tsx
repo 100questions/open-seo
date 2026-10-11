@@ -123,8 +123,7 @@ function CloseIcon({ size = 28 }: { size?: number }) {
 }
 
 export const Route = createFileRoute("/_marketing")({
-  // Runs at prerender/SSR time, so the count is baked into the static HTML that
-  // Cloudflare serves from the edge — no per-viewer request for it.
+  // Fetch once at SSR/prerender time, not once per visitor.
   loader: async () => ({ githubStarCount: await loadGithubStarCount() }),
   // The value is fixed per build; never refetch it on client navigation.
   staleTime: Infinity,
@@ -137,12 +136,12 @@ function MarketingLayout() {
   const { pathname } = useLocation();
 
   const mobileNavItems = getMobileNavItems(githubStarCount);
-  // The home route owns the full viewport width (and its own footer/CTA band);
+  // The home route owns the full viewport width and footer;
   // every other marketing page gets the shared marketing canvas and footer.
   const isHome = pathname === "/";
 
   // On the landing route, paint html/body cream so the area behind the
-  // floating nav and any overscroll matches the landing canvas.
+  // header and any overscroll matches the landing canvas.
   useEffect(() => {
     if (!isHome) return;
     const root = document.documentElement;
@@ -158,28 +157,31 @@ function MarketingLayout() {
 
   return (
     <main className="fd-light min-h-screen bg-[var(--color-surface)] text-[var(--color-brand)]">
-      <div className="relative z-50 mx-auto w-full max-w-6xl px-4 pt-6 sm:px-6 md:pt-8">
-        <div className="relative mx-auto max-w-5xl">
-          <nav className="grid min-h-14 grid-cols-[1fr_auto] items-center gap-3 rounded-full border border-[var(--color-border-subtle)] bg-white/90 px-4 py-2.5 shadow-sm shadow-neutral-900/5 backdrop-blur md:grid-cols-[1fr_auto_1fr] md:px-5">
+      <header className="sticky top-0 z-50 w-full border-b border-[#ded9d2] bg-[#f5f1ec]/95 backdrop-blur-xl">
+        <div className="relative mx-auto w-full max-w-[1232px] px-6">
+          <nav
+            aria-label="Main navigation"
+            className="flex h-16 items-center gap-10 md:h-[76px] lg:gap-14"
+          >
             <Link
               to="/"
-              className="text-sm font-semibold hover:opacity-80 transition-opacity"
+              className="text-xl font-medium tracking-[-0.06em] hover:opacity-80 transition-opacity"
             >
               OpenSEO
             </Link>
 
-            <div className="hidden items-center justify-center gap-5 md:flex">
+            <div className="hidden items-center gap-7 md:flex">
               <FeatureDropdown />
               <ResourcesDropdown />
               <Link
                 to="/pricing"
-                className="text-sm font-semibold text-neutral-600 transition-colors hover:text-neutral-900"
+                className="text-sm font-medium text-neutral-600 transition-colors hover:text-neutral-900"
               >
                 Pricing
               </Link>
             </div>
 
-            <div className="flex items-center justify-end gap-2 sm:gap-3">
+            <div className="ml-auto flex items-center justify-end gap-2 sm:gap-3">
               <button
                 type="button"
                 aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
@@ -194,23 +196,22 @@ function MarketingLayout() {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label={`GitHub, ${githubStarCount} stars`}
-                className="hidden h-9 items-center gap-1.5 px-2 text-sm font-semibold text-neutral-600 transition-colors hover:text-neutral-900 md:inline-flex"
+                className="hidden h-9 items-center gap-1.5 px-2 text-sm font-medium text-neutral-600 transition-colors hover:text-neutral-900 md:inline-flex"
               >
                 <GitHubIcon size={16} />
-                <span>GitHub</span>
                 <span className="text-neutral-500">{githubStarCount}</span>
               </a>
               <a
                 href="https://app.openseo.so/sign-in"
-                className="hidden h-9 items-center rounded-full border border-[var(--color-border-subtle)] px-4 text-sm font-medium text-neutral-900 transition-colors hover:border-neutral-900 md:inline-flex"
+                className="hidden h-9 items-center gap-2 border-l border-[#ded9d2] pl-5 text-sm font-medium text-neutral-900 transition-colors hover:text-neutral-600 md:inline-flex"
               >
-                Sign in
+                Sign in <span aria-hidden="true">↗</span>
               </a>
             </div>
           </nav>
 
           {mobileMenuOpen ? (
-            <div className="absolute left-0 right-0 top-full z-30 mt-3 rounded-2xl border border-[var(--color-border-subtle)] bg-white p-3 shadow-xl shadow-neutral-900/10 md:hidden">
+            <div className="absolute left-0 right-0 top-full z-30 max-h-[calc(100dvh-4rem)] overflow-y-auto border-b border-[var(--color-border-subtle)] bg-white p-4 shadow-xl shadow-neutral-900/10 md:hidden">
               <div className="grid grid-cols-2 gap-2">
                 <a
                   href="https://app.openseo.so/sign-in"
@@ -252,7 +253,7 @@ function MarketingLayout() {
             </div>
           ) : null}
         </div>
-      </div>
+      </header>
 
       {isHome ? (
         <Outlet />
@@ -299,13 +300,13 @@ function ResourcesDropdown() {
     <div className="group relative">
       <a
         href="/blogs"
-        className="text-sm font-semibold text-neutral-600 transition-colors hover:text-neutral-900 md:hidden"
+        className="text-sm font-medium text-neutral-600 transition-colors hover:text-neutral-900 md:hidden"
       >
         Resources
       </a>
       <button
         type="button"
-        className="hidden h-10 items-center text-sm font-semibold text-neutral-600 transition-colors hover:text-neutral-900 md:inline-flex"
+        className="hidden h-10 items-center text-sm font-medium text-neutral-600 transition-colors hover:text-neutral-900 md:inline-flex"
       >
         Resources
       </button>
@@ -336,17 +337,17 @@ function FeatureDropdown() {
     <div className="group relative">
       <Link
         to="/features"
-        className="text-sm font-semibold text-neutral-600 transition-colors hover:text-neutral-900 md:hidden"
+        className="text-sm font-medium text-neutral-600 transition-colors hover:text-neutral-900 md:hidden"
       >
         Features
       </Link>
       <button
         type="button"
-        className="hidden h-10 items-center text-sm font-semibold text-neutral-600 transition-colors hover:text-neutral-900 md:inline-flex"
+        className="hidden h-10 items-center text-sm font-medium text-neutral-600 transition-colors hover:text-neutral-900 md:inline-flex"
       >
         Features
       </button>
-      <div className="pointer-events-none absolute left-1/2 top-[calc(100%-2px)] z-20 hidden w-[560px] -translate-x-1/2 pt-2 opacity-0 transition md:block group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100">
+      <div className="pointer-events-none absolute left-0 top-[calc(100%-2px)] z-20 hidden w-[560px] pt-2 opacity-0 transition md:block group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100">
         <div className="rounded-lg border border-[var(--color-border-subtle)] bg-white p-5 shadow-xl shadow-neutral-900/10">
           <div className="grid grid-cols-2 gap-x-8 gap-y-6">
             {featureGroups.map((group) => (

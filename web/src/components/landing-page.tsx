@@ -212,38 +212,52 @@ function ArrowCta({
 
 function Hero() {
   return (
-    <section className="itc-hero">
-      <Container>
-        <a
-          href={PRODUCT_HUNT_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="itc-hero-ph-laurel"
-          aria-label="Number 1 Product of the Day on Product Hunt"
-        >
-          <ProductHuntLaurel />
-        </a>
-        <h1
-          className="itc-display-xl itc-hero-title"
-          style={{ maxWidth: 1180, margin: "0 auto" }}
-        >
-          SEO made simple.
-        </h1>
-        <p
-          className="itc-subhead itc-muted itc-hero-subtitle"
-          style={{ maxWidth: 640, margin: "24px auto 0" }}
-        >
-          Connect your favorite AI agent in 2 minutes. OpenSEO gives the data
-          and tools you need to grow your business&apos;s organic traffic.
-        </p>
-        <div className="itc-hero-ctas">
-          <div className="itc-hero-cta-group">
-            <ArrowCta size="lg" />
-            <p className="itc-hero-cta-note">No credit card required</p>
+    <>
+      <section className="itc-hero">
+        <Container>
+          <a
+            href={PRODUCT_HUNT_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="itc-hero-ph-laurel"
+            aria-label="Number 1 Product of the Day on Product Hunt"
+          >
+            <ProductHuntLaurel />
+          </a>
+          <h1
+            className="itc-display-xl itc-hero-title"
+            style={{ maxWidth: 1180, margin: "0 auto" }}
+          >
+            Grow your business with SEO
+          </h1>
+          <p
+            className="itc-subhead itc-muted itc-hero-subtitle"
+            style={{ maxWidth: 640, margin: "24px auto 0" }}
+          >
+            Connect your favorite AI agent in 2 minutes. OpenSEO gives the data,
+            tools and integrations you need to grow your business's organic
+            traffic.
+          </p>
+          <div className="itc-hero-ctas">
+            <div className="itc-hero-cta-group">
+              <ArrowCta size="lg" />
+              <p className="itc-hero-cta-note">No credit card required</p>
+            </div>
           </div>
-        </div>
-      </Container>
-    </section>
+        </Container>
+      </section>
+      <div className="itc-hero-followup">
+        <Container>
+          <figure className="itc-hero-demo">
+            <div className="itc-mockup">
+              <div className="itc-mockup-media">
+                <DemoVideo />
+              </div>
+            </div>
+          </figure>
+        </Container>
+      </div>
+    </>
   );
 }
 
@@ -369,7 +383,18 @@ function DemoVideo() {
         <button
           type="button"
           className="itc-demo-play"
-          onClick={() => void videoRef.current?.play()}
+          onClick={() => {
+            const video = videoRef.current;
+            if (!video) return;
+            video.scrollIntoView({
+              block: "center",
+              behavior: window.matchMedia("(prefers-reduced-motion: reduce)")
+                .matches
+                ? "instant"
+                : "smooth",
+            });
+            void video.play();
+          }}
           aria-label="Play the OpenSEO demo video"
         >
           <span className="itc-demo-play-button" aria-hidden="true">
@@ -388,18 +413,12 @@ function ProductSection() {
     <section className="itc-section itc-section-demo">
       <Container>
         <div className="itc-narrow">
-          <h2 className="itc-display-lg">See OpenSEO in action</h2>
+          <h2 className="itc-display-lg">SEO data for the work ahead</h2>
           <p className="itc-subhead itc-muted" style={{ margin: "20px 0 0" }}>
             Keyword research, competitor analysis, backlinks, rank tracking,
             technical audits, and AI-search visibility, all on real DataForSEO
             data and connected to each other.
           </p>
-        </div>
-
-        <div className="itc-mockup" style={{ marginTop: 48 }}>
-          <div className="itc-mockup-media" style={{ aspectRatio: "1440/900" }}>
-            <DemoVideo />
-          </div>
         </div>
 
         <div className="itc-feature-list-grid">
