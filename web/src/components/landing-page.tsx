@@ -19,15 +19,17 @@ import { featurePages } from "@/lib/feature-pages";
 import { getAgentSetupPrompt } from "../../../src/client/features/ai-mcp/agentSetupPrompt";
 import "./landing-page.css";
 
-const SIGNUP_URL = "https://app.openseo.so/sign-up";
-const PRODUCT_HUNT_URL =
+export const SIGNUP_URL = "https://app.openseo.so/sign-up";
+export const PRODUCT_HUNT_URL =
   "https://www.producthunt.com/products/openseo?launch=openseo";
 const GITHUB_URL = "https://github.com/every-app/open-seo";
 const DISCORD_URL = "https://discord.gg/c9uGs3cFXr";
 
-type Testimonial = {
+export type Testimonial = {
   quote: string;
   name: string;
+  /** Company or role, shown after the name. */
+  role?: string;
   initial: string;
   handle: string;
   href: string;
@@ -35,7 +37,7 @@ type Testimonial = {
   avatarSrc?: string;
 };
 
-const TESTIMONIALS: Testimonial[] = [
+export const TESTIMONIALS: Testimonial[] = [
   {
     quote:
       "All of the value, none of the bloat. OpenSEO is a no-brainer compared to the expensive alternatives!",
@@ -87,7 +89,7 @@ function strokeProps(size: number, className?: string) {
   };
 }
 
-function IconArrowRight({ size = 16, className }: IconProps) {
+export function IconArrowRight({ size = 16, className }: IconProps) {
   return (
     <svg {...strokeProps(size, className)}>
       <path d="M5 12h14" />
@@ -176,7 +178,7 @@ function IconDiscord({ size = 18, className }: IconProps) {
 
 // ─── Shared bits ─────────────────────────────────────────────────────
 
-function Container({
+export function Container({
   children,
   className = "",
 }: {
@@ -186,7 +188,7 @@ function Container({
   return <div className={`itc-container ${className}`}>{children}</div>;
 }
 
-function ArrowCta({
+export function ArrowCta({
   href = SIGNUP_URL,
   className = "itc-btn itc-btn-primary",
   children = "Start enjoying SEO",
@@ -263,7 +265,13 @@ function Hero() {
 
 // ─── Testimonial (true-black inverse strip) ──────────────────────────
 
-function Testimonial() {
+export function Testimonials({
+  title = "Trusted by 3,000+ entrepreneurs",
+  items = TESTIMONIALS,
+}: {
+  title?: string;
+  items?: Testimonial[];
+}) {
   return (
     <section className="itc-inverse">
       <Container>
@@ -272,10 +280,10 @@ function Testimonial() {
             className="itc-display-md itc-testimonials-title"
             style={{ margin: "0 auto 32px" }}
           >
-            Trusted by 3,000+ entrepreneurs
+            {title}
           </h2>
           <div className="itc-quote-grid">
-            {TESTIMONIALS.map((t) => (
+            {items.map((t) => (
               <figure className="itc-quote-card" key={t.name}>
                 <div className="itc-quote-mark" aria-hidden="true">
                   &ldquo;
@@ -294,7 +302,12 @@ function Testimonial() {
                     )}
                   </span>
                   <span className="itc-quote-meta">
-                    <span className="itc-quote-name">{t.name}</span>
+                    <span className="itc-quote-name">
+                      {t.name}
+                      {t.role ? (
+                        <span className="itc-quote-role"> · {t.role}</span>
+                      ) : null}
+                    </span>
                     <a
                       href={t.href}
                       target="_blank"
@@ -485,7 +498,7 @@ const RECOMMENDED_SKILLS = [
   },
 ];
 
-function SkillsList() {
+export function SkillsList() {
   return (
     <ul className="itc-skill-list">
       {RECOMMENDED_SKILLS.map((skill) => (
@@ -500,7 +513,7 @@ function SkillsList() {
 
 const SETUP_PROMPT = getAgentSetupPrompt("https://app.openseo.so");
 
-function CopySetupPrompt() {
+export function CopySetupPrompt({ size = "md" }: { size?: "md" | "lg" }) {
   const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
@@ -520,8 +533,12 @@ function CopySetupPrompt() {
 
   return (
     <>
-      <button type="button" onClick={copy} className="itc-btn itc-btn-fin">
-        <IconCopy size={16} />
+      <button
+        type="button"
+        onClick={copy}
+        className={`itc-btn itc-btn-fin${size === "lg" ? " itc-btn-lg" : ""}`}
+      >
+        <IconCopy size={size === "lg" ? 18 : 16} />
         Copy setup prompt
       </button>
       <div className="itc-toast-region" role="status" aria-live="polite">
@@ -539,26 +556,7 @@ function McpSection() {
           <div>
             <h2 className="itc-display-lg">Get superpowers with the MCP</h2>
             <SkillsList />
-            <div className="itc-agent-icons">
-              {MCP_CLIENTS.map(({ name, Icon }) => (
-                <span key={name} className="itc-agent-icon" title={name}>
-                  <Icon aria-hidden="true" />
-                  <span
-                    style={{
-                      clip: "rect(0 0 0 0)",
-                      clipPath: "inset(50%)",
-                      height: 1,
-                      overflow: "hidden",
-                      position: "absolute",
-                      whiteSpace: "nowrap",
-                      width: 1,
-                    }}
-                  >
-                    {name}
-                  </span>
-                </span>
-              ))}
-            </div>
+            <AgentIcons />
             <div className="itc-mcp-ctas">
               <CopySetupPrompt />
               <a href="/docs/agent-setup" className="itc-textlink">
@@ -567,55 +565,83 @@ function McpSection() {
             </div>
           </div>
 
-          <div className="itc-terminal">
-            <div className="itc-terminal-bar">
-              <span style={{ display: "flex", gap: 6 }} aria-hidden="true">
-                <span className="itc-terminal-dot" />
-                <span className="itc-terminal-dot" />
-                <span className="itc-terminal-dot" />
-              </span>
-              <span className="itc-terminal-label">claude · openseo mcp</span>
-            </div>
-            <pre>
-              <code>
-                <span className="t-orange">›</span> find and cluster keywords
-                for <span className="t-bright">openseo.so</span>
-                {"\n\n"}
-                <span className="t-dim">
-                  ⏺ openseo.keyword_research(seed: &quot;open source seo&quot;)
-                </span>
-                {"\n"}
-                {"  "}keyword{"                      "}volume{"     "}kd{"\n"}
-                {"  "}open source seo{"              "}
-                <span className="t-bright">1,300</span>
-                {"      "}
-                <span className="t-dim">12</span>
-                {"\n"}
-                {"  "}open source seo tools{"        "}
-                <span className="t-bright">720</span>
-                {"        "}
-                <span className="t-dim">9</span>
-                {"\n"}
-                {"  "}self-hosted seo platform{"     "}
-                <span className="t-bright">210</span>
-                {"        "}
-                <span className="t-dim">4</span>
-                {"\n\n"}
-                <span className="t-orange">✓</span>
-                <span className="t-dim">
-                  {" "}
-                  Saved 3 keywords to your workspace.
-                </span>
-                {"\n"}
-                <span className="t-orange">↳</span>
-                <span className="t-dim"> View data in app: </span>
-                <span className="t-bright">app.openseo.so/keywords</span>
-              </code>
-            </pre>
-          </div>
+          <McpTerminal />
         </div>
       </Container>
     </section>
+  );
+}
+
+export function AgentIcons() {
+  return (
+    <div className="itc-agent-icons">
+      {MCP_CLIENTS.map(({ name, Icon }) => (
+        <span key={name} className="itc-agent-icon" title={name}>
+          <Icon aria-hidden="true" />
+          <span
+            style={{
+              clip: "rect(0 0 0 0)",
+              clipPath: "inset(50%)",
+              height: 1,
+              overflow: "hidden",
+              position: "absolute",
+              whiteSpace: "nowrap",
+              width: 1,
+            }}
+          >
+            {name}
+          </span>
+        </span>
+      ))}
+    </div>
+  );
+}
+
+export function McpTerminal() {
+  return (
+    <div className="itc-terminal">
+      <div className="itc-terminal-bar">
+        <span style={{ display: "flex", gap: 6 }} aria-hidden="true">
+          <span className="itc-terminal-dot" />
+          <span className="itc-terminal-dot" />
+          <span className="itc-terminal-dot" />
+        </span>
+        <span className="itc-terminal-label">claude · openseo mcp</span>
+      </div>
+      <pre>
+        <code>
+          <span className="t-orange">›</span> find and cluster keywords for{" "}
+          <span className="t-bright">openseo.so</span>
+          {"\n\n"}
+          <span className="t-dim">
+            ⏺ openseo.keyword_research(seed: &quot;open source seo&quot;)
+          </span>
+          {"\n"}
+          {"  "}keyword{"                      "}volume{"     "}kd{"\n"}
+          {"  "}open source seo{"              "}
+          <span className="t-bright">1,300</span>
+          {"      "}
+          <span className="t-dim">12</span>
+          {"\n"}
+          {"  "}open source seo tools{"        "}
+          <span className="t-bright">720</span>
+          {"        "}
+          <span className="t-dim">9</span>
+          {"\n"}
+          {"  "}self-hosted seo platform{"     "}
+          <span className="t-bright">210</span>
+          {"        "}
+          <span className="t-dim">4</span>
+          {"\n\n"}
+          <span className="t-orange">✓</span>
+          <span className="t-dim"> Saved 3 keywords to your workspace.</span>
+          {"\n"}
+          <span className="t-orange">↳</span>
+          <span className="t-dim"> View data in app: </span>
+          <span className="t-bright">app.openseo.so/keywords</span>
+        </code>
+      </pre>
+    </div>
   );
 }
 
@@ -928,7 +954,7 @@ function IconNotebook({ size = 22, className }: IconProps) {
   );
 }
 
-function IconReport({ size = 22, className }: IconProps) {
+export function IconReport({ size = 22, className }: IconProps) {
   return (
     <svg {...strokeProps(size, className)}>
       <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
@@ -965,7 +991,7 @@ const BEYOND_DATA = [
   },
 ];
 
-function BeyondDataSection() {
+export function BeyondDataSection() {
   return (
     <section className="itc-section">
       <Container>
@@ -1024,7 +1050,7 @@ function BeyondDataSection() {
 
 // ─── Open source ─────────────────────────────────────────────────────
 
-function OpenSourceSection() {
+export function OpenSourceSection() {
   return (
     <section className="itc-section itc-section-open-source">
       <Container>
@@ -1121,7 +1147,7 @@ export function LandingPage() {
     <div className="itc">
       <Hero />
       <McpSection />
-      <Testimonial />
+      <Testimonials />
       <BeyondDataSection />
       <OpenSourceSection />
       <ProductSection />

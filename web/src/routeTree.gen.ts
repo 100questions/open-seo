@@ -9,8 +9,11 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as CampaignRouteImport } from './routes/_campaign'
 import { Route as MarketingRouteImport } from './routes/_marketing'
 import { Route as AgentSetupDottxtRouteImport } from './routes/agent-setup[.]txt'
+import { Route as CampaignAgenciesRouteImport } from './routes/_campaign/agencies'
+import { Route as CampaignAgentsRouteImport } from './routes/_campaign/agents'
 import { Route as MarketingIndexRouteImport } from './routes/_marketing/index'
 import { Route as MarketingAboutRouteImport } from './routes/_marketing/about'
 import { Route as MarketingAhrefsAlternativeRouteImport } from './routes/_marketing/ahrefs-alternative'
@@ -97,6 +100,10 @@ import { Route as MarketingLibrarySiteAuditIndexBloatRouteImport } from './route
 import { Route as MarketingLibrarySiteAuditSeoAuditReportTemplateRouteImport } from './routes/_marketing/library/site-audit/seo-audit-report-template'
 import { Route as MarketingLibrarySiteAuditTechnicalSeoAuditChecklistRouteImport } from './routes/_marketing/library/site-audit/technical-seo-audit-checklist'
 
+const CampaignRoute = CampaignRouteImport.update({
+  id: '/_campaign',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MarketingRoute = MarketingRouteImport.update({
   id: '/_marketing',
   getParentRoute: () => rootRouteImport,
@@ -105,6 +112,16 @@ const AgentSetupDottxtRoute = AgentSetupDottxtRouteImport.update({
   id: '/agent-setup.txt',
   path: '/agent-setup.txt',
   getParentRoute: () => rootRouteImport,
+} as any)
+const CampaignAgenciesRoute = CampaignAgenciesRouteImport.update({
+  id: '/agencies',
+  path: '/agencies',
+  getParentRoute: () => CampaignRoute,
+} as any)
+const CampaignAgentsRoute = CampaignAgentsRouteImport.update({
+  id: '/agents',
+  path: '/agents',
+  getParentRoute: () => CampaignRoute,
 } as any)
 const MarketingIndexRoute = MarketingIndexRouteImport.update({
   id: '/',
@@ -594,6 +611,8 @@ const MarketingLibrarySiteAuditTechnicalSeoAuditChecklistRoute =
 export interface FileRoutesByFullPath {
   '/': typeof MarketingIndexRoute
   '/agent-setup.txt': typeof AgentSetupDottxtRoute
+  '/agencies': typeof CampaignAgenciesRoute
+  '/agents': typeof CampaignAgentsRoute
   '/about': typeof MarketingAboutRoute
   '/ahrefs-alternative': typeof MarketingAhrefsAlternativeRoute
   '/ahrefs-pricing': typeof MarketingAhrefsPricingRoute
@@ -680,7 +699,10 @@ export interface FileRoutesByFullPath {
   '/library/site-audit/': typeof MarketingLibrarySiteAuditIndexRoute
 }
 export interface FileRoutesByTo {
+  '/': typeof MarketingIndexRoute
   '/agent-setup.txt': typeof AgentSetupDottxtRoute
+  '/agencies': typeof CampaignAgenciesRoute
+  '/agents': typeof CampaignAgentsRoute
   '/about': typeof MarketingAboutRoute
   '/ahrefs-alternative': typeof MarketingAhrefsAlternativeRoute
   '/ahrefs-pricing': typeof MarketingAhrefsPricingRoute
@@ -718,7 +740,6 @@ export interface FileRoutesByTo {
   '/docs/llms.txt': typeof DocsLlmsDottxtRoute
   '/guides/$': typeof GuidesSplatRoute
   '/js/script.js': typeof JsScriptDotjsRoute
-  '/': typeof MarketingIndexRoute
   '/blogs': typeof BlogsIndexRoute
   '/docs': typeof DocsIndexRoute
   '/guides': typeof GuidesIndexRoute
@@ -769,8 +790,11 @@ export interface FileRoutesByTo {
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
+  '/_campaign': typeof CampaignRouteWithChildren
   '/_marketing': typeof MarketingRouteWithChildren
   '/agent-setup.txt': typeof AgentSetupDottxtRoute
+  '/_campaign/agencies': typeof CampaignAgenciesRoute
+  '/_campaign/agents': typeof CampaignAgentsRoute
   '/_marketing/about': typeof MarketingAboutRoute
   '/_marketing/ahrefs-alternative': typeof MarketingAhrefsAlternativeRoute
   '/_marketing/ahrefs-pricing': typeof MarketingAhrefsPricingRoute
@@ -862,6 +886,8 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/agent-setup.txt'
+    | '/agencies'
+    | '/agents'
     | '/about'
     | '/ahrefs-alternative'
     | '/ahrefs-pricing'
@@ -948,7 +974,10 @@ export interface FileRouteTypes {
     | '/library/site-audit/'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/'
     | '/agent-setup.txt'
+    | '/agencies'
+    | '/agents'
     | '/about'
     | '/ahrefs-alternative'
     | '/ahrefs-pricing'
@@ -986,7 +1015,6 @@ export interface FileRouteTypes {
     | '/docs/llms.txt'
     | '/guides/$'
     | '/js/script.js'
-    | '/'
     | '/blogs'
     | '/docs'
     | '/guides'
@@ -1036,8 +1064,11 @@ export interface FileRouteTypes {
     | '/library/site-audit'
   id:
     | '__root__'
+    | '/_campaign'
     | '/_marketing'
     | '/agent-setup.txt'
+    | '/_campaign/agencies'
+    | '/_campaign/agents'
     | '/_marketing/about'
     | '/_marketing/ahrefs-alternative'
     | '/_marketing/ahrefs-pricing'
@@ -1126,6 +1157,7 @@ export interface FileRouteTypes {
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
+  CampaignRoute: typeof CampaignRouteWithChildren
   MarketingRoute: typeof MarketingRouteWithChildren
   AgentSetupDottxtRoute: typeof AgentSetupDottxtRoute
   ApiBacklinkCheckRoute: typeof ApiBacklinkCheckRoute
@@ -1149,6 +1181,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/_campaign': {
+      id: '/_campaign'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof CampaignRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_marketing': {
       id: '/_marketing'
       path: ''
@@ -1162,6 +1201,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/agent-setup.txt'
       preLoaderRoute: typeof AgentSetupDottxtRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_campaign/agencies': {
+      id: '/_campaign/agencies'
+      path: '/agencies'
+      fullPath: '/agencies'
+      preLoaderRoute: typeof CampaignAgenciesRouteImport
+      parentRoute: typeof CampaignRoute
+    }
+    '/_campaign/agents': {
+      id: '/_campaign/agents'
+      path: '/agents'
+      fullPath: '/agents'
+      preLoaderRoute: typeof CampaignAgentsRouteImport
+      parentRoute: typeof CampaignRoute
     }
     '/_marketing/': {
       id: '/_marketing/'
@@ -1761,6 +1814,20 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface CampaignRouteChildren {
+  CampaignAgenciesRoute: typeof CampaignAgenciesRoute
+  CampaignAgentsRoute: typeof CampaignAgentsRoute
+}
+
+const CampaignRouteChildren: CampaignRouteChildren = {
+  CampaignAgenciesRoute: CampaignAgenciesRoute,
+  CampaignAgentsRoute: CampaignAgentsRoute,
+}
+
+const CampaignRouteWithChildren = CampaignRoute._addFileChildren(
+  CampaignRouteChildren,
+)
+
 interface MarketingRouteChildren {
   MarketingAboutRoute: typeof MarketingAboutRoute
   MarketingAhrefsAlternativeRoute: typeof MarketingAhrefsAlternativeRoute
@@ -1939,6 +2006,7 @@ const MarketingRouteWithChildren = MarketingRoute._addFileChildren(
 )
 
 const rootRouteChildren: RootRouteChildren = {
+  CampaignRoute: CampaignRouteWithChildren,
   MarketingRoute: MarketingRouteWithChildren,
   AgentSetupDottxtRoute: AgentSetupDottxtRoute,
   ApiBacklinkCheckRoute: ApiBacklinkCheckRoute,
