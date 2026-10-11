@@ -4,7 +4,7 @@ import {
   type ConfigurationRows,
   type RunRow,
 } from "../repositories/AiVisibilityRepository";
-import { AiVisibilityError } from "./aiVisibilityErrors";
+import { AI_ANSWER_FAILURES, AiVisibilityError } from "./aiVisibilityErrors";
 import { aiScope } from "./aiVisibilityConfiguration";
 import {
   getOptionalEnvValue,
@@ -38,9 +38,9 @@ async function staleRunReason(run: RunRow): Promise<string | null> {
     .catch(() => null);
   if (status && ACTIVE_WORKFLOW_STATUSES.has(status.status)) return null;
   if (Date.now() - Date.parse(run.createdAt) < STARTUP_GRACE_MS) return null;
-  return status
-    ? `Collection stopped (${status.status}).`
-    : "Collection stopped before it started.";
+  if (!status) return AI_ANSWER_FAILURES.stoppedBeforeStart;
+  console.warn(`[ai-visibility] ${run.id} workflow stopped (${status.status})`);
+  return AI_ANSWER_FAILURES.stopped;
 }
 
 /** Fails a run and its unfinished answers. Safe on a finished run. */
@@ -143,7 +143,7 @@ export async function startRun(
         },
       });
     } catch (error) {
-      await failAiRun(id, "Collection could not start.");
+      await failAiRun(id, AI_ANSWER_FAILURES.notStarted);
       throw error;
     }
     return getRun({ projectId: project.id, runId: id });

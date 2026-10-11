@@ -9,8 +9,9 @@ import {
 } from "@/server/lib/dataforseo";
 import { DataforseoChargedTaskError } from "@/server/lib/dataforseo/envelope";
 import { resolveLatestLlmModelName } from "@/server/lib/dataforseo/llm-models";
-import { AppError } from "@/server/lib/errors";
+import { AppError, asAppError } from "@/server/lib/errors";
 import { isHostedServerAuthMode } from "@/server/lib/runtime-env";
+import type { ErrorCode } from "@/shared/error-codes";
 import { getIsoCountryCode } from "@/shared/keyword-locations";
 import {
   aiEngineUsesModelApi,
@@ -25,6 +26,7 @@ import {
 } from "../providers/dataforseoEvidence";
 import { aiBrands } from "./aiVisibilityConfiguration";
 import { aiCostForAnswers } from "./aiVisibilityCost";
+import { AI_ANSWER_FAILURES } from "./aiVisibilityErrors";
 import { matchAiBrand } from "./aiVisibilityMatching";
 import { failAiRun } from "./aiVisibilityRuns";
 
@@ -163,7 +165,8 @@ export async function postAiBatch(
   batch: AiTaskBatch,
 ): Promise<AiPendingTask[]> {
   let posted: PostedAiTrackingTask[] = [];
-  let error = "DataForSEO did not accept this prompt.";
+  // A rejected entry is logged where it is parsed.
+  let error: ErrorCode = "INTERNAL_ERROR";
   try {
     posted = await createDataforseoClient(customer).aiSearch.trackingTaskPost({
       engine: batch.engine,
@@ -171,7 +174,8 @@ export async function postAiBatch(
       ...market,
     });
   } catch (cause) {
-    error = errorMessage(cause);
+    error = asAppError(cause)?.code ?? "INTERNAL_ERROR";
+    console.warn(`[ai-visibility] ${runId} task_post failed:`, cause);
   }
   const taskIds = new Map(posted.map((task) => [task.tag, task.taskId]));
   const rejected = batch.tasks
@@ -251,6 +255,7 @@ async function fetchLiveAnswers(
       : {
           status: "failed",
           message: errorMessage(outcome.reason),
+          code: asAppError(outcome.reason)?.code ?? "INTERNAL_ERROR",
           retryable: false,
         },
   );
@@ -303,9 +308,12 @@ export async function collectAiModelBatch(
             await waitBeforeRetry();
             continue;
           }
-          await repo.failPendingObservations(runId, errorMessage(cause), [
-            task.tag,
-          ]);
+          console.warn(
+            `[ai-visibility] ${runId} answer ${task.tag} failed:`,
+            cause,
+          );
+          const code = asAppError(cause)?.code ?? "INTERNAL_ERROR";
+          await repo.failPendingObservations(runId, code, [task.tag]);
           return;
         }
       }
@@ -381,16 +389,18 @@ async function saveAiOutcome(
   brands: AiBrand[],
 ) {
   if (outcome.status === "failed") {
-    await repo.failPendingObservations(runId, outcome.message, [task.tag]);
+    console.warn(
+      `[ai-visibility] ${runId} answer ${task.tag} failed: ${outcome.message}`,
+    );
+    await repo.failPendingObservations(runId, outcome.code, [task.tag]);
     return;
   }
   const answer = parseDataforseoAnswer(outcome.result, task.engine);
   if (!answer) {
-    await repo.failPendingObservations(
-      runId,
-      "DataForSEO returned an answer we could not read.",
-      [task.tag],
+    console.error(
+      `[ai-visibility] ${runId} answer ${task.tag} has a shape we cannot read`,
     );
+    await repo.failPendingObservations(runId, "INTERNAL_ERROR", [task.tag]);
     return;
   }
   await saveAiAnswer(task.tag, answer, brands);
@@ -428,10 +438,7 @@ async function saveAiAnswer(
 export async function finalizeAiRun(runId: string) {
   const run = await repo.getRunInternal(runId);
   if (!run || run.status !== "running") return;
-  await repo.failPendingObservations(
-    runId,
-    "No answer arrived within the collection window.",
-  );
+  await repo.failPendingObservations(runId, AI_ANSWER_FAILURES.notArrived);
   const statuses = await repo.getObservationStatuses([runId]);
   const completed = statuses.filter((row) => row.status === "completed").length;
   const status =
@@ -452,8 +459,8 @@ export async function finalizeAiRun(runId: string) {
 export async function markAiRunFailed(runId: string, error: unknown) {
   const message =
     error instanceof AppError && error.code === "INSUFFICIENT_CREDITS"
-      ? "Not enough credits for the last check."
-      : "The last check could not collect answers.";
+      ? AI_ANSWER_FAILURES.noCredits
+      : AI_ANSWER_FAILURES.runFailed;
   await failAiRun(runId, message);
   const run = await repo.getRunInternal(runId);
   if (run) await repo.updateTracker(run.trackerId, { lastSkipReason: message });

@@ -23,7 +23,7 @@ import {
 } from "../repositories/AiVisibilityRepository";
 import type { ObservationWithPrompt } from "../repositories/AiVisibilityRepository";
 import { markdownToText } from "../providers/dataforseoEvidence";
-import { AiVisibilityError } from "./aiVisibilityErrors";
+import { AiVisibilityError, publicAiAnswerError } from "./aiVisibilityErrors";
 import {
   aiBrandNames,
   aiMentionSpans,
@@ -75,7 +75,7 @@ function rowsFor(
           ? "answered"
           : "no_answer",
     collectedAt: o.collectedAt,
-    error: o.error,
+    error: publicAiAnswerError(o.error),
     citationCount: sources[o.id]?.length ?? 0,
     brands: (matches[o.id] ?? []).map((m) => ({
       name: m.name,

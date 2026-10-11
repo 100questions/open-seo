@@ -62,6 +62,7 @@ const liveAnswer = {
 const providerFailure = {
   status: "failed",
   message: "Internal Server Error.",
+  code: "UPSTREAM_UNAVAILABLE",
   retryable: true,
 } as const;
 
@@ -206,7 +207,7 @@ describe("AI answer collection", () => {
     ]);
     expect(await repo.getObservation("answer-1")).toMatchObject({
       status: "failed",
-      error: "Internal Server Error.",
+      error: "UPSTREAM_UNAVAILABLE",
     });
   });
 
@@ -282,7 +283,7 @@ describe("AI answer collection", () => {
     ]);
     expect(await repo.getObservation("answer-1")).toMatchObject({
       status: "failed",
-      error: "Timed out",
+      error: "INTERNAL_ERROR",
     });
   });
 
@@ -314,11 +315,11 @@ describe("AI answer collection", () => {
     expect(dataforseo.llmResponse).toHaveBeenCalledTimes(4);
     expect(await repo.getObservation("answer-0")).toMatchObject({
       status: "failed",
-      error: "Internal Server Error.",
+      error: "UPSTREAM_UNAVAILABLE",
     });
     expect(await repo.getObservation("answer-1")).toMatchObject({
       status: "failed",
-      error: "DataForSEO HTTP 502",
+      error: "UPSTREAM_UNAVAILABLE",
     });
   });
 
@@ -359,21 +360,18 @@ describe("AI answer collection", () => {
     });
     expect(await repo.getObservation("answer-1")).toMatchObject({
       status: "failed",
-      error: "Timed out",
+      error: "INTERNAL_ERROR",
     });
     expect(dataforseo.trackingLiveBatch).toHaveBeenCalledOnce();
   });
 
   it("asks a live answer again when DataForSEO's backend fails it, up to 3 attempts", async () => {
     vi.useFakeTimers({ toFake: ["setTimeout"] });
-    const failed = (message: string) => ({
-      status: "fulfilled",
-      value: { ...providerFailure, message },
-    });
+    const failed = { status: "fulfilled", value: providerFailure };
     dataforseo.trackingLiveBatch
-      .mockResolvedValueOnce([failed("Internal Server Error."), failed("1")])
-      .mockResolvedValueOnce([liveAnswer, failed("2")])
-      .mockResolvedValueOnce([failed("Internal SE Server Error.")]);
+      .mockResolvedValueOnce([failed, failed])
+      .mockResolvedValueOnce([liveAnswer, failed])
+      .mockResolvedValueOnce([failed]);
 
     const collecting = collectAiLiveBatch(runId, customer, market, [
       { tag: "answer-0", prompt: "Which SEO tools?", engine: "chatgpt" },
@@ -388,7 +386,7 @@ describe("AI answer collection", () => {
     });
     expect(await repo.getObservation("answer-1")).toMatchObject({
       status: "failed",
-      error: "Internal SE Server Error.",
+      error: "UPSTREAM_UNAVAILABLE",
     });
   });
 

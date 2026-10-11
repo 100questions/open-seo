@@ -28,7 +28,8 @@ const own = { name: "OpenSEO", domain: "openseo.so", own: true };
 const rival = { name: "Ahrefs", domain: "ahrefs.com", own: false };
 type Answer = {
   markdown?: string | null;
-  failed?: boolean;
+  /** The stored error of a failed answer. */
+  failed?: string;
   mentioned?: string[];
   cited?: string[];
   sources?: string[];
@@ -78,7 +79,7 @@ async function seedRun(
     await repo.persistAnswer({
       observationId: id,
       values: answer.failed
-        ? { status: "failed", error: "Provider failed" }
+        ? { status: "failed", error: answer.failed }
         : { status: "completed", answerMarkdown: answer.markdown ?? null },
       sources: (answer.sources ?? []).map((url, position) => ({
         id: crypto.randomUUID(),
@@ -118,7 +119,7 @@ describe("AI visibility results", () => {
       { markdown: "OpenSEO and Ahrefs", mentioned: ["OpenSEO", "Ahrefs"] },
       { markdown: "Ahrefs", mentioned: ["Ahrefs"], cited: ["OpenSEO"] },
       { markdown: null },
-      { failed: true },
+      { failed: "UPSTREAM_UNAVAILABLE" },
     ]);
 
     const results = await loadAiResults({
@@ -145,6 +146,26 @@ describe("AI visibility results", () => {
       },
       // Second in the first answer, first in the second: average 1.5.
       { domain: "ahrefs.com", answers: 2, mentions: 2, positionTotal: 3 },
+    ]);
+  });
+
+  it("never shows the raw text stored by an older answer", async () => {
+    await seedRun("baseline", [
+      { failed: "Internal SE Server Error." },
+      { failed: "DataForSEO returned an answer we could not read." },
+      { failed: "No answer arrived within the collection window." },
+    ]);
+
+    const results = await loadAiResults({
+      ...query,
+      includeHistory: false,
+      competitorGap: false,
+    });
+
+    expect(results.rows.map((row) => row.error)).toEqual([
+      "UPSTREAM_UNAVAILABLE",
+      "INTERNAL_ERROR",
+      "No answer arrived within the collection window.",
     ]);
   });
 

@@ -9,6 +9,7 @@ import {
   failedResponseError,
 } from "@/server/lib/dataforseo/envelope";
 import { AppError } from "@/server/lib/errors";
+import type { ErrorCode } from "@/shared/error-codes";
 import {
   aiEngineUsesModelApi,
   type AiEngine,
@@ -143,7 +144,9 @@ export async function postAiTrackingTasks(
 export type AiTrackingAnswer =
   | {
       status: "failed";
+      /** The provider's message, for the logs. Users see `code`. */
       message: string;
+      code: ErrorCode;
       /** DataForSEO's own backend failed the task, so a new one can succeed. */
       retryable: boolean;
     }
@@ -175,11 +178,14 @@ function aiTrackingAnswer(
 ): AiTrackingAnswer {
   if (task.status_code !== 20000) {
     if (isNoResultsTask(task)) return { status: "completed", result: null };
+    const upstream = isUpstreamFailureStatus(task.status_code);
     return {
       status: "failed",
       message:
         task.status_message || `DataForSEO task failed (${task.status_code})`,
-      retryable: isUpstreamFailureStatus(task.status_code),
+      // Like assertOk: the provider's own failure, or a request we got wrong.
+      code: upstream ? "UPSTREAM_UNAVAILABLE" : "INTERNAL_ERROR",
+      retryable: upstream,
     };
   }
   return { status: "completed", result: task.result?.[0] ?? null };
