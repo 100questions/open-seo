@@ -148,6 +148,8 @@ const makeHyperdrive = () =>
     // Prod runs with Hyperdrive caching OFF (no write invalidation for a SaaS
     // with per-user reads-after-writes).
     caching: { disabled: true },
+    // Raise Postgres max_connections to 100 before deploying this pool limit.
+    originConnectionLimit: 30,
   }).pipe(Alchemy.RemovalPolicy.retain());
 
 const optionalVar = (name: string) =>
