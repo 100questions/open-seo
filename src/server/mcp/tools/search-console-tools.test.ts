@@ -201,6 +201,22 @@ describe("search console MCP tools", () => {
     );
   });
 
+  it("points to API setup instead of reconnect when the API is disabled", async () => {
+    mocks.GscService.getPerformance.mockRejectedValue(
+      new GscApiError(403, "denied", "SERVICE_DISABLED"),
+    );
+    const { getSearchConsolePerformanceTool } = searchConsoleTools;
+
+    const result = await getSearchConsolePerformanceTool.handler(
+      { projectId: "project_1" },
+      toolContext,
+    );
+
+    const first = result.content[0];
+    expect(first.type === "text" && first.text).toContain("isn't enabled");
+    expect(first.type === "text" && first.text).not.toContain("reconnect");
+  });
+
   it("rejects searchAppearance combined with another dimension", async () => {
     const { getSearchConsolePerformanceTool } = searchConsoleTools;
 

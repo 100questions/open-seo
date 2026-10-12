@@ -24,6 +24,7 @@ import {
   type GscPerformanceInput,
 } from "@/server/features/gsc/searchAnalytics";
 import {
+  GSC_API_DISABLED_MESSAGE,
   GscApiError,
   GscNotConnectedError,
   GscTokenError,
@@ -97,7 +98,9 @@ function describeGscError(error: unknown): string {
     return "The Search Console connection has expired or was revoked. Reconnect it to continue.";
   }
   if (error instanceof GscApiError) {
-    return error.message;
+    return error.apiDisabled
+      ? `${GSC_API_DISABLED_MESSAGE} Setup docs: ${GSC_SELF_HOSTED_SETUP_DOCS_URL}`
+      : error.message;
   }
   return error instanceof Error ? error.message : String(error);
 }
@@ -374,8 +377,9 @@ export const getSearchConsolePerformanceTool = {
       });
     } catch (error) {
       const isNotConnected = error instanceof GscNotConnectedError;
+      const apiDisabled = error instanceof GscApiError && error.apiDisabled;
       return mcpResponse({
-        text: `${describeGscError(error)}${isNotConnected ? ` Connect it here: ${connectUrl}` : ` (reconnect at ${connectUrl})`}`,
+        text: `${describeGscError(error)}${isNotConnected ? ` Connect it here: ${connectUrl}` : apiDisabled ? "" : ` (reconnect at ${connectUrl})`}`,
         meta,
         structuredContent: {
           ok: false,
@@ -555,8 +559,9 @@ export const inspectUrlsTool = {
       });
     } catch (error) {
       const isNotConnected = error instanceof GscNotConnectedError;
+      const apiDisabled = error instanceof GscApiError && error.apiDisabled;
       return mcpResponse({
-        text: `${describeGscError(error)}${isNotConnected ? ` Connect it here: ${connectUrl}` : ` (reconnect at ${connectUrl})`}`,
+        text: `${describeGscError(error)}${isNotConnected ? ` Connect it here: ${connectUrl}` : apiDisabled ? "" : ` (reconnect at ${connectUrl})`}`,
         meta,
         structuredContent: {
           ok: false,

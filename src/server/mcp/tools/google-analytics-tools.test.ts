@@ -2,6 +2,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { makeGa4ReportResult } from "@/server/features/ga4/services/ga4-test-fixtures";
 import { Ga4ReportError } from "@/server/lib/ga4Errors";
+import { GscApiError } from "@/server/lib/gscErrors";
 import * as tools from "./google-analytics-tools";
 import { makeToolContext, textContent } from "./tool-test-support";
 
@@ -249,6 +250,22 @@ describe("Google Analytics MCP tools", () => {
         "— | https://example.com/b | 14.0 | 120 | 1 | 0.8% | — | — | — | gsc_only",
       ].join("\n"),
     );
+  });
+
+  it("reports a disabled Search Console API instead of asking to reconnect", async () => {
+    mocks.getOpportunities.mockRejectedValue(
+      new GscApiError(403, "denied", "SERVICE_DISABLED"),
+    );
+
+    const result = await tools.getSearchOpportunitiesTool.handler(
+      { projectId: "project_1", limit: 25 },
+      toolContext,
+    );
+
+    expect(result.structuredContent).toMatchObject({
+      status: "error",
+      error: { code: "gsc_api_disabled" },
+    });
   });
 
   it("renders measurement-health issues and the stream inventory", async () => {

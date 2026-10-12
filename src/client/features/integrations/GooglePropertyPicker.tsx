@@ -30,6 +30,7 @@ export type GooglePickerAccount = {
   email: string | null;
   requiresReconnect: boolean;
   unavailable?: boolean;
+  apiDisabled?: boolean;
   properties: Property[];
 };
 type SecondaryAction = {
@@ -250,7 +251,9 @@ export function GooglePropertyPicker({
                         ) : account.unavailable ? (
                           <div className="flex flex-wrap items-center justify-between gap-2 px-2 pb-2 text-sm">
                             <span className="text-muted-foreground">
-                              Couldn't load properties
+                              {account.apiDisabled
+                                ? "Search Console API isn't enabled"
+                                : "Couldn't load properties"}
                             </span>
                             <Button variant="ghost" size="xs" onClick={onRetry}>
                               Try again

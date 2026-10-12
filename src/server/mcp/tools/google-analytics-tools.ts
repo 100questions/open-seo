@@ -5,6 +5,7 @@ import { Ga4MeasurementHealthService } from "@/server/features/ga4/services/Ga4M
 import { OVERVIEW_METRICS } from "@/server/features/ga4/services/Ga4ReportDefinitions";
 import { Ga4OrganicOverviewService } from "@/server/features/ga4/services/Ga4OrganicOverviewService";
 import {
+  GSC_API_DISABLED_MESSAGE,
   GscApiError,
   GscNotConnectedError,
   GscTokenError,
@@ -198,6 +199,9 @@ function errorResponse(
   } else if (error instanceof GscNotConnectedError) {
     code = "gsc_not_connected";
     message = "Search Console is not connected for this project.";
+  } else if (error instanceof GscApiError && error.apiDisabled) {
+    code = "gsc_api_disabled";
+    message = GSC_API_DISABLED_MESSAGE;
   } else if (
     error instanceof GscTokenError ||
     (error instanceof GscApiError && [401, 403].includes(error.status))
