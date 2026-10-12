@@ -25,7 +25,6 @@ import { z } from "zod";
 
 const signUpSchema = z
   .object({
-    name: z.string().trim(),
     email: z.string().trim().email("Enter a valid email address."),
     password: passwordSchema,
     confirmPassword: z.string(),
@@ -63,7 +62,6 @@ function SignUpPage() {
 
   const form = useAppForm({
     defaultValues: {
-      name: "",
       email: "",
       password: "",
       confirmPassword: "",
@@ -78,8 +76,6 @@ function SignUpPage() {
         captureClientEvent("auth:sign_up_submit", {
           redirect_to: redirectTo,
         });
-        const resolvedName =
-          value.name.trim() || email.split("@")[0] || "OpenSEO User";
         const verificationCallbackURL = new URL(
           "/verify-email",
           window.location.origin,
@@ -95,7 +91,7 @@ function SignUpPage() {
           );
         }
         const result = await authClient.signUp.email({
-          name: resolvedName,
+          name: email.split("@")[0] || "OpenSEO User",
           email,
           password: value.password,
           callbackURL: verificationCallbackURL.toString(),
@@ -216,17 +212,6 @@ function SignUpPage() {
       ) : (
         <form.AppForm>
           <form.Form className="space-y-4">
-            <form.AppField name="name">
-              {(field) => (
-                <field.TextField
-                  label="Name (optional)"
-                  hideLabel
-                  className={authInputClassName}
-                  placeholder="Name (optional)..."
-                  autoComplete="name"
-                />
-              )}
-            </form.AppField>
             <form.AppField name="email">
               {(field) => (
                 <field.TextField
