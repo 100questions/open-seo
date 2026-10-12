@@ -330,7 +330,7 @@ function ClientWins({ result }: { result: ClientKeywords }) {
           free trial to research the keywords it should go after.
         </p>
         <div className="mt-4">
-          <GateCta label="Start free trial" />
+          <GateCta label="Start free trial" domain={result.target} />
         </div>
       </div>
     );
@@ -373,7 +373,10 @@ function ClientWins({ result }: { result: ClientKeywords }) {
             ))}
           </ul>
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/50 px-4 text-center">
-            <GateCta label={`See all ${rows.length} keywords`} />
+            <GateCta
+              label={`See all ${rows.length} keywords`}
+              domain={result.target}
+            />
             <p className="mt-2 text-xs text-[var(--color-brand-muted)]">
               Free trial. No credit card required.
             </p>
@@ -381,7 +384,7 @@ function ClientWins({ result }: { result: ClientKeywords }) {
         </div>
       ) : (
         <div className="border-t border-[var(--color-border-subtle)] p-4 md:p-5">
-          <GateCta label="Track these for your client" />
+          <GateCta label="Track these for your client" domain={result.target} />
           <p className="mt-2 text-xs text-[var(--color-brand-muted)]">
             Free trial. No credit card required.
           </p>
@@ -410,10 +413,12 @@ function KeywordRow({ row }: { row: RankedKeywordRow }) {
   );
 }
 
-function GateCta({ label }: { label: string }) {
+/** Sign-up carries the checked site into onboarding, which lands the new
+ * account on that site's keywords ranking #4-20. */
+function GateCta({ label, domain }: { label: string; domain: string }) {
   return (
     <a
-      href={SIGNUP_URL}
+      href={`${SIGNUP_URL}?${new URLSearchParams({ domain }).toString()}`}
       onClick={() => trackTool("tool_cta_click", CLIENT_CHECK_TOOL)}
       className="inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-neutral-950 px-5 text-sm font-medium text-white transition-colors hover:bg-neutral-800 sm:w-auto"
     >

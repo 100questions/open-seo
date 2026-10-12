@@ -36,7 +36,11 @@ const signUpSchema = z
   });
 
 export const Route = createFileRoute("/_auth/sign-up")({
-  validateSearch: authRedirectSearchSchema,
+  validateSearch: authRedirectSearchSchema.extend({
+    // A site checked with the marketing site's free tool; onboarding
+    // prefills it, and the website step validates it on save.
+    domain: z.string().optional().catch(undefined),
+  }),
   component: SignUpPage,
 });
 
@@ -44,7 +48,12 @@ function SignUpPage() {
   const search = Route.useSearch();
   const navigate = useNavigate();
   const { redirectTo, isHostedMode } = useAuthPageState(search.redirect);
-  const postSignupRedirect = redirectTo === "/" ? "/onboarding" : redirectTo;
+  const postSignupRedirect =
+    redirectTo !== "/"
+      ? redirectTo
+      : search.domain
+        ? `/onboarding?${new URLSearchParams({ domain: search.domain }).toString()}`
+        : "/onboarding";
   const [showEmailForm, setShowEmailForm] = useState(false);
   const google = useGoogleAuth({ redirectTo, postSignupRedirect });
 

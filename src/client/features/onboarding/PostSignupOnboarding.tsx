@@ -30,6 +30,8 @@ type PostSignupOnboardingProps = {
   onFinish: () => void;
   isSaving: boolean;
   accountMenu: ReactNode;
+  /** Prefill for the website step, from the marketing site's free check. */
+  suggestedDomain?: string;
 };
 
 export function PostSignupOnboarding({
@@ -42,6 +44,7 @@ export function PostSignupOnboarding({
   onFinish,
   isSaving,
   accountMenu,
+  suggestedDomain,
 }: PostSignupOnboardingProps) {
   const stepName = ONBOARDING_STEPS[step];
   const isLastStep = step === ONBOARDING_LAST_STEP;
@@ -61,7 +64,11 @@ export function PostSignupOnboarding({
       <OnboardingCard step={step + 1} total={ONBOARDING_LAST_STEP + 1}>
         <fieldset disabled={isSaving} className="min-w-0">
           {stepName === "website" ? (
-            <WebsiteOnboardingStep onNext={onNext} onSkip={onSkip} />
+            <WebsiteOnboardingStep
+              onNext={onNext}
+              onSkip={onSkip}
+              suggestedDomain={suggestedDomain}
+            />
           ) : stepName === "search_console" ? (
             <SearchConsoleOnboardingStep
               onNext={onNext}

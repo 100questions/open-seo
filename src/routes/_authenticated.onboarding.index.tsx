@@ -3,6 +3,7 @@ import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { PlanPageAccountMenu } from "@/client/features/billing/PlanPageAccountMenu";
 import { PostSignupOnboarding } from "@/client/features/onboarding/PostSignupOnboarding";
+import { projectsQueryOptions } from "@/client/features/projects/projectQueries";
 import {
   buildOnboardingPayload,
   ONBOARDING_LAST_STEP,
@@ -25,9 +26,16 @@ export const Route = createFileRoute("/_authenticated/onboarding/")({
   // worker isolate cannot reuse another account's cached onboarding state.
   ssr: false,
   // Step lives in the URL so it survives refresh and works with back/forward.
-  validateSearch: (search: Record<string, unknown>): { step: number } => {
+  // `domain` arrives from sign-up when the visitor checked a site with the
+  // marketing site's free keyword tool.
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { step: number; domain?: string } => {
     const raw = Number(search.step);
-    return { step: Number.isFinite(raw) ? clampStep(raw) : 0 };
+    return {
+      step: Number.isFinite(raw) ? clampStep(raw) : 0,
+      domain: typeof search.domain === "string" ? search.domain : undefined,
+    };
   },
   // Send users who already finished onboarding home before rendering. Running
   // this in beforeLoad (not a component effect) means it can't race with the
@@ -64,7 +72,7 @@ function OnboardingFlow({
   email: string | undefined;
 }) {
   const navigate = useNavigate();
-  const { step } = Route.useSearch();
+  const { step, domain } = Route.useSearch();
   const [answers, setAnswers] = useState<OnboardingAnswers>(initialAnswers);
 
   const saveMutation = useMutation({
@@ -75,7 +83,10 @@ function OnboardingFlow({
   });
 
   const goToStep = (next: number) =>
-    void navigate({ to: "/onboarding", search: { step: clampStep(next) } });
+    void navigate({
+      to: "/onboarding",
+      search: { step: clampStep(next), domain },
+    });
 
   // Wait for the save before moving on, so a failure toast shows on the step
   // the user can retry instead of on the next one.
@@ -121,7 +132,30 @@ function OnboardingFlow({
       interests: answers.selectedInterests,
       work_for: answers.workFor,
       source: answers.source,
+      from_free_check: Boolean(domain),
     });
+    // Visitors who signed up from the free keyword check came to see the rest
+    // of its results, so land them on the saved website's keywords ranking
+    // #4-20 instead of the dashboard.
+    if (domain) {
+      const [project] = await queryClient
+        .fetchQuery(projectsQueryOptions())
+        .catch(() => []);
+      if (project?.domain) {
+        void navigate({
+          to: "/p/$projectId/domain",
+          params: { projectId: project.id },
+          search: {
+            domain: project.domain,
+            minRank: 4,
+            maxRank: 20,
+            sort: "volume",
+          },
+          replace: true,
+        });
+        return;
+      }
+    }
     void navigate({ to: "/", replace: true });
   };
 
@@ -134,6 +168,7 @@ function OnboardingFlow({
       onBack={() => goToStep(step - 1)}
       onSkip={handleSkip}
       onFinish={handleFinish}
+      suggestedDomain={domain}
       isSaving={saveMutation.isPending}
       accountMenu={<PlanPageAccountMenu email={email} />}
     />

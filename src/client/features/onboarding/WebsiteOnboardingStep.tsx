@@ -27,9 +27,11 @@ import { updateProject } from "@/serverFunctions/projects";
 export function WebsiteOnboardingStep({
   onNext,
   onSkip,
+  suggestedDomain,
 }: {
   onNext: () => void;
   onSkip: () => void;
+  suggestedDomain?: string;
 }) {
   const projectsQuery = useQuery(projectsQueryOptions());
   const project = projectsQuery.data?.[0];
@@ -48,6 +50,7 @@ export function WebsiteOnboardingStep({
         <WebsiteForm
           key={project.id}
           project={project}
+          suggestedDomain={suggestedDomain}
           onNext={onNext}
           onSkip={onSkip}
         />
@@ -72,10 +75,12 @@ const websiteSchema = z.object({
 
 function WebsiteForm({
   project,
+  suggestedDomain,
   onNext,
   onSkip,
 }: {
   project: ProjectSummary;
+  suggestedDomain?: string;
   onNext: () => void;
   onSkip: () => void;
 }) {
@@ -108,7 +113,7 @@ function WebsiteForm({
 
   const form = useAppForm({
     defaultValues: {
-      domain: project.domain ?? "",
+      domain: project.domain ?? suggestedDomain ?? "",
       // New projects default to the United States.
       market: {
         locationCode: project.locationCode,
