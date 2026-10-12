@@ -196,10 +196,12 @@ function MarketingLayout() {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label={`GitHub, ${githubStarCount} stars`}
-                className="hidden h-9 items-center gap-1.5 px-2 text-sm font-medium text-neutral-600 transition-colors hover:text-neutral-900 md:inline-flex"
+                className="group hidden h-9 items-center gap-1.5 px-2 text-sm font-medium text-neutral-600 transition-colors hover:text-neutral-900 md:inline-flex"
               >
                 <GitHubIcon size={16} />
-                <span className="text-neutral-500">{githubStarCount}</span>
+                <span className="text-neutral-500 transition-colors group-hover:text-neutral-900">
+                  {githubStarCount}
+                </span>
               </a>
               <a
                 href="https://app.openseo.so/sign-in"
@@ -310,7 +312,7 @@ function ResourcesDropdown() {
       >
         Resources
       </button>
-      <div className="pointer-events-none absolute left-1/2 top-[calc(100%-2px)] z-20 hidden w-[280px] -translate-x-1/2 pt-2 opacity-0 transition md:block group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100">
+      <div className="pointer-events-none absolute left-0 top-[calc(100%-2px)] z-20 hidden w-[280px] pt-2 opacity-0 transition md:block group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100">
         <div className="rounded-lg border border-[var(--color-border-subtle)] bg-white p-3 shadow-xl shadow-neutral-900/10">
           {resources.map((resource) => (
             <a
