@@ -155,6 +155,23 @@ function MarketingLayout() {
     };
   }, [isHome]);
 
+  // Keep the page behind the open mobile menu from scrolling. The menu is
+  // md:hidden, so close it at desktop widths to release the lock.
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const desktop = window.matchMedia("(min-width: 768px)");
+    const closeOnDesktop = () => {
+      if (desktop.matches) setMobileMenuOpen(false);
+    };
+    desktop.addEventListener("change", closeOnDesktop);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      desktop.removeEventListener("change", closeOnDesktop);
+    };
+  }, [mobileMenuOpen]);
+
   return (
     <main className="fd-light min-h-screen bg-[var(--color-surface)] text-[var(--color-brand)]">
       <header className="sticky top-0 z-50 w-full border-b border-[#ded9d2] bg-[#f5f1ec]/95 backdrop-blur-xl">
@@ -213,19 +230,19 @@ function MarketingLayout() {
           </nav>
 
           {mobileMenuOpen ? (
-            <div className="absolute left-0 right-0 top-full z-30 max-h-[calc(100dvh-4rem)] overflow-y-auto border-b border-[var(--color-border-subtle)] bg-white p-4 shadow-xl shadow-neutral-900/10 md:hidden">
+            <div className="absolute inset-x-0 top-full h-[calc(100dvh-4rem)] overflow-y-auto overscroll-contain border-t border-[#ded9d2] bg-[#f5f1ec] p-4 md:hidden">
               <div className="grid grid-cols-2 gap-2">
                 <a
                   href="https://app.openseo.so/sign-in"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex h-11 items-center justify-center rounded-xl bg-neutral-950 px-3 text-sm font-semibold text-white transition-colors hover:bg-neutral-800"
+                  className="flex h-11 items-center justify-center rounded-xl bg-neutral-950 px-3 text-sm font-medium text-white transition-colors hover:bg-neutral-800"
                 >
                   Try OpenSEO
                 </a>
                 <a
                   href="https://app.openseo.so/sign-in"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex h-11 items-center justify-center rounded-xl border border-[var(--color-border-subtle)] px-3 text-sm font-semibold text-neutral-800 transition-colors hover:border-neutral-900 hover:bg-[#f5f1ec]"
+                  className="flex h-11 items-center justify-center rounded-xl border border-[#ded9d2] bg-white px-3 text-sm font-medium text-neutral-800 transition-colors hover:border-neutral-900"
                 >
                   Sign in
                 </a>
@@ -234,7 +251,7 @@ function MarketingLayout() {
               <div className="mt-3 space-y-3">
                 {mobileNavItems.map((section) => (
                   <div key={section.label}>
-                    <p className="px-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                    <p className="px-2 text-xs font-medium uppercase tracking-wide text-neutral-500">
                       {section.label}
                     </p>
                     <div className="mt-1 space-y-1">
@@ -243,7 +260,7 @@ function MarketingLayout() {
                           key={item.href}
                           href={item.href}
                           onClick={() => setMobileMenuOpen(false)}
-                          className="flex min-h-10 items-center rounded-xl px-2 text-sm font-semibold text-neutral-800 transition-colors hover:bg-neutral-50 hover:text-neutral-950"
+                          className="flex min-h-10 items-center rounded-xl px-2 text-sm font-medium text-neutral-800 transition-colors hover:bg-[#ebe5dd] hover:text-neutral-950"
                         >
                           {item.label}
                         </a>
