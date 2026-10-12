@@ -58,7 +58,10 @@ async function createConfig(input: {
     input.projectMarket,
   );
   const scheduleInterval = input.scheduleInterval ?? "weekly";
-  const nextCheckAt = resolveNextCheckAt(scheduleInterval, input.scheduleTime);
+  const nextCheckAt = await resolveNextCheckAt(
+    scheduleInterval,
+    input.scheduleTime,
+  );
 
   const locationName = input.locationName ?? null;
   // Before the duplicate/limit checks so an unusable location name is the
@@ -206,7 +209,10 @@ async function updateConfig(
     (scheduleInterval !== "manual" && !existing.nextCheckAt)
   ) {
     updates.scheduleInterval = scheduleInterval;
-    updates.nextCheckAt = resolveNextCheckAt(scheduleInterval, scheduleTime);
+    updates.nextCheckAt = await resolveNextCheckAt(
+      scheduleInterval,
+      scheduleTime,
+    );
   }
 
   await RankTrackingRepository.updateConfig(configId, projectId, updates);
