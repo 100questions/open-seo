@@ -105,11 +105,15 @@ export function PrivacyBootstrap() {
   const previousUserIdRef = React.useRef<string | null>(null);
 
   const analytics = choices?.analytics;
+  // Replay records signed-in users only, and only after they agreed to Terms
+  // that disclose it: the signup clickwrap or the updated-Terms prompt both
+  // record termsAcceptedAt. Older accounts are asked again before recording.
+  const replay = session?.user?.termsAcceptedAt != null;
   React.useEffect(() => {
     if (analytics === undefined || isSessionPending) return;
 
     if (analytics) {
-      startAnalyticsCapture();
+      startAnalyticsCapture({ replay });
       if (userId) {
         identifyAnalyticsUser({ userId, organizationId });
         previousUserIdRef.current = userId;
@@ -121,7 +125,7 @@ export function PrivacyBootstrap() {
       previousUserIdRef.current = null;
       resetAnalyticsUser();
     }
-  }, [analytics, isSessionPending, organizationId, userId]);
+  }, [analytics, isSessionPending, organizationId, replay, userId]);
 
   // Keep the account flag in line with this browser so server-side events
   // stop when analytics is off here (for example, a new EU visitor who hasn't

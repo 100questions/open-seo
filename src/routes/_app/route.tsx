@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { useHostedAuthRouteGuard } from "@/client/features/auth/useHostedAuthRouteGuard";
 import { prefetchBillingAccount } from "@/client/features/billing/billingAccountQuery";
 import { FreePlanBanner } from "@/client/features/billing/FreePlanBanner";
+import { TermsUpdateBanner } from "@/client/features/auth/TermsUpdateBanner";
 import { SkeletonPage } from "@/client/components/SkeletonPresets";
 import { AuthenticatedAppLayout } from "@/client/layout/AppShell";
 import { useOnboardingRedirect } from "@/client/features/onboarding/useOnboardingRedirect";
@@ -33,8 +34,11 @@ function AppRouteLayout() {
       projectId={projectId}
       ready={ready}
       banner={
-        ready && projectId && authGate.isHostedMode ? (
-          <FreePlanBanner />
+        ready && authGate.isHostedMode ? (
+          <>
+            <TermsUpdateBanner />
+            {projectId ? <FreePlanBanner /> : null}
+          </>
         ) : undefined
       }
     >

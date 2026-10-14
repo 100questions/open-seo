@@ -290,6 +290,17 @@ async function isAnalyticsOptedOut(userId: string) {
   return record?.analyticsOptedOut === true;
 }
 
+async function setTermsAcceptance(
+  userId: string,
+  version: string,
+  acceptedAt: Date,
+) {
+  await db
+    .update(authUser)
+    .set({ termsAcceptedVersion: version, termsAcceptedAt: acceptedAt })
+    .where(eq(authUser.id, userId));
+}
+
 export const AuthRepository = {
   upsertDelegatedOrganization,
   findFirstOrganizationIdForUser,
@@ -301,6 +312,7 @@ export const AuthRepository = {
   listMembershipsForUser,
   getLastActiveOrganizationId,
   setLastActiveOrganization,
+  setTermsAcceptance,
   getHostedUser,
   getHostedUserNames,
   hasPendingInvitationForEmail,

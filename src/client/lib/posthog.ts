@@ -100,7 +100,7 @@ function getBrowserPostHogClient(): Promise<BrowserPostHogClient | null> {
         respect_dnt: true,
         // Opting out also clears PostHog's cookie and stored identifiers.
         opt_out_persistence_by_default: true,
-        // Recording starts in startAnalyticsCapture, once analytics is allowed.
+        // Recording starts in startAnalyticsCapture, once replay is allowed.
         disable_session_recording: true,
         // Console output can quote page content and full error messages,
         // and the project setting would otherwise record it in replays.
@@ -205,12 +205,13 @@ export function stopAnalyticsCapture() {
   });
 }
 
-export function startAnalyticsCapture() {
+export function startAnalyticsCapture({ replay }: { replay: boolean }) {
   analyticsCaptureEnabled = true;
   withPostHogClient((client) => {
     if (!analyticsCaptureEnabled) return;
     client.opt_in_capturing({ captureEventName: false });
-    client.startSessionRecording();
+    if (replay) client.startSessionRecording();
+    else client.stopSessionRecording();
   });
 }
 

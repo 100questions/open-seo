@@ -8,6 +8,17 @@ export const userAdditionalFields = {
     required: false as const,
     input: true as const,
   },
+  // Set by the server only: at signup and through acceptTermsUpdate.
+  termsAcceptedVersion: {
+    type: "string" as const,
+    required: false as const,
+    input: false as const,
+  },
+  termsAcceptedAt: {
+    type: "date" as const,
+    required: false as const,
+    input: false as const,
+  },
 };
 
 export const baseAuthOptions = {

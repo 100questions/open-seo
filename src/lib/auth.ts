@@ -11,6 +11,7 @@ import { pgDb } from "@/db/pg/client";
 import * as pgSchema from "@/db/pg/schema";
 import { getDatabaseProvider } from "@/db/provider";
 import { z } from "zod";
+import { CURRENT_TERMS_VERSION } from "@/shared/terms";
 import { isHostedAuthMode } from "@/lib/auth-mode";
 import { createApiKeyPlugin } from "@/lib/auth-api-key";
 import { createBaseAuthConfig } from "@/lib/auth-config";
@@ -229,10 +230,10 @@ function createAuth() {
           // throwaway-inbox domains before the user row is created. Self-hosted
           // has no shared credit pool to protect, so it's left untouched.
           before: async (user, ctx) => {
-            if (
-              isHostedAuthMode(env.AUTH_MODE) &&
-              isDisposableEmailDomain(user.email)
-            ) {
+            if (!isHostedAuthMode(env.AUTH_MODE)) {
+              return { data: user };
+            }
+            if (isDisposableEmailDomain(user.email)) {
               throw new APIError("BAD_REQUEST", {
                 message: "Please sign up with a non-disposable email address.",
               });
@@ -241,7 +242,16 @@ function createAuth() {
             // this browser, so server-side analytics doesn't run for a
             // visitor who hasn't opted in where opt-in is required.
             const choices = signupPrivacyChoices(ctx?.request);
-            return { data: { ...user, analyticsOptedOut: !choices.analytics } };
+            // Every hosted signup path (email form, Google on the sign-up or
+            // sign-in page) shows the Terms clickwrap next to its button.
+            return {
+              data: {
+                ...user,
+                analyticsOptedOut: !choices.analytics,
+                termsAcceptedVersion: CURRENT_TERMS_VERSION,
+                termsAcceptedAt: new Date(),
+              },
+            };
           },
           after: async (user, ctx) => {
             await syncHostedSignupContact(user);

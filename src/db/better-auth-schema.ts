@@ -23,6 +23,8 @@ export const user = sqliteTable("user", {
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
   analyticsOptedOut: integer("analytics_opted_out", { mode: "boolean" }),
+  termsAcceptedVersion: text("terms_accepted_version"),
+  termsAcceptedAt: integer("terms_accepted_at", { mode: "timestamp_ms" }),
   // The org this user last worked in; seeds session.activeOrganizationId at
   // sign-in (validated against a live membership first). Not a FK: an org
   // delete must not fail because a user's last-active pointer references it.
