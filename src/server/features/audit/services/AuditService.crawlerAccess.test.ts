@@ -128,6 +128,19 @@ describe("startAudit crawler access", () => {
     expect(params.access).toMatchObject({ host: "store.example.com" });
   });
 
+  it("records a signed store as Shopify when the probe itself is throttled", async () => {
+    // Shopify's edge 429 carries no `powered-by` header.
+    vi.mocked(fetch).mockImplementation(() =>
+      Promise.resolve(new Response(null, { status: 429 })),
+    );
+
+    await AuditService.startAudit(input);
+
+    expect(createAuditMock.mock.calls[0][0].config.sitePlatform).toBe(
+      "shopify",
+    );
+  });
+
   it("does not replay an expired signature", async () => {
     findCredentialMock.mockResolvedValue([
       await credentialRow("2020-01-01T00:00:00.000Z"),

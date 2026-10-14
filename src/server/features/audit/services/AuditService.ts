@@ -109,10 +109,12 @@ async function startAudit(input: {
     lighthouseStrategy,
     renderJavaScript,
     // Shopify storefronts answer with `powered-by: Shopify`; knowing this is
-    // what lets the report explain a throttled crawl instead of shrugging.
-    sitePlatform: probe.poweredBy?.toLowerCase().includes("shopify")
-      ? "shopify"
-      : undefined,
+    // what lets the report explain a throttled crawl instead of shrugging. A
+    // throttled probe sees no header, but a saved signature is always Shopify's.
+    sitePlatform:
+      credential || probe.poweredBy?.toLowerCase().includes("shopify")
+        ? "shopify"
+        : undefined,
     crawlerCredentialId: credential?.id,
   };
 

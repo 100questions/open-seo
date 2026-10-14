@@ -44,6 +44,7 @@ vi.mock(
 );
 
 import { researchWebsite } from "./websiteResearch";
+import { billResearchSpend } from "@/server/billing/researchSpend";
 import { AppError } from "@/server/lib/errors";
 import { customer } from "@/server/features/ai-visibility/services/aiVisibilityTestFixtures";
 
@@ -207,5 +208,22 @@ describe("researchWebsite", () => {
       researchWebsite("https://saved.com", project, customer),
     ).rejects.toThrow("Website research was incomplete");
     expect(search).toHaveBeenCalledOnce();
+  });
+
+  it("bills Context reads of a site that stays unreadable", async () => {
+    listSections.mockResolvedValue([]);
+    readSite.mockImplementation(
+      async (_site, _pages, usage: { contextCredits: number }) => {
+        usage.contextCredits += 1;
+        return { pages: [] };
+      },
+    );
+
+    await expect(
+      researchWebsite("https://saved.com", project, customer),
+    ).rejects.toThrow(AppError);
+    expect(billResearchSpend).toHaveBeenCalledWith(customer, [
+      expect.objectContaining({ provider: "context", costUsd: 0.0025 }),
+    ]);
   });
 });

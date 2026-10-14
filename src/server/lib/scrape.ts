@@ -5,7 +5,13 @@
 // gracefully (less text); a Browser Rendering upgrade can slot in behind this
 // same interface later.
 
-import { normalizeAndValidateStartUrl } from "@/server/lib/audit/url-policy";
+import {
+  isShopifyHost,
+  normalizeAndValidateStartUrl,
+} from "@/server/lib/audit/url-policy";
+import { RenderedPageService } from "@/server/lib/audit/rendered-page";
+import { getOptionalEnvValue } from "@/server/lib/runtime-env";
+import type { RenderUsage } from "@/shared/audit-rendering";
 
 const MAX_PAGES = 5;
 const PER_PAGE_CHAR_LIMIT = 4000;
@@ -49,7 +55,30 @@ async function readBoundedText(response: Response): Promise<string | null> {
   return result;
 }
 
-async function fetchText(url: string): Promise<string | null> {
+/**
+ * Shopify's edge throttles requests from Cloudflare Workers, so a throttled
+ * storefront page is read through Context instead. Its credits are added to
+ * `usage` for the caller to bill.
+ */
+async function readThrottledShopifyPage(
+  url: string,
+  usage: RenderUsage,
+): Promise<string | null> {
+  const contextApiKey = await getOptionalEnvValue("CONTEXT_API_KEY");
+  if (!contextApiKey || !(await isShopifyHost(new URL(url).hostname)))
+    return null;
+  try {
+    return (await RenderedPageService.renderPage(url, { contextApiKey, usage }))
+      .html;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchText(
+  url: string,
+  contextUsage?: RenderUsage,
+): Promise<string | null> {
   try {
     let current = url;
     for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
@@ -60,6 +89,10 @@ async function fetchText(url: string): Promise<string | null> {
         redirect: "manual",
         signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       });
+      if (response.status === 429 && contextUsage) {
+        await response.body?.cancel();
+        return readThrottledShopifyPage(current, contextUsage);
+      }
       if (response.status < 300 || response.status >= 400)
         return response.ok ? await readBoundedText(response) : null;
       const location = response.headers.get("location");
@@ -131,8 +164,11 @@ function decodeEntities(value: string): string {
 
 /** Fetches one (already-validated) URL and shapes it as a page, or null if it
  * couldn't be read or yielded no text. */
-async function scrapePage(url: string): Promise<ScrapedPage | null> {
-  const html = await fetchText(url);
+async function scrapePage(
+  url: string,
+  contextUsage?: RenderUsage,
+): Promise<ScrapedPage | null> {
+  const html = await fetchText(url, contextUsage);
   if (!html) {
     return null;
   }
@@ -150,10 +186,12 @@ async function scrapePage(url: string): Promise<ScrapedPage | null> {
  * exact pages (the user's own or a competitor's) rather than asking us to
  * discover a site. Each URL is independently run through the SSRF guard, so a
  * blocked or unreachable URL is skipped rather than failing the batch.
+ * With `contextUsage`, throttled Shopify pages are read through Context.
  */
 export async function readPages(
   urls: string[],
   maxPages: number = MAX_PAGES,
+  contextUsage?: RenderUsage,
 ): Promise<SiteReadResult> {
   const pages: ScrapedPage[] = [];
   for (const rawUrl of urls.slice(0, maxPages)) {
@@ -164,7 +202,7 @@ export async function readPages(
     } catch {
       continue; // blocked or unparseable URL
     }
-    const page = await scrapePage(url);
+    const page = await scrapePage(url, contextUsage);
     if (page) {
       pages.push(page);
     }
@@ -204,12 +242,13 @@ export async function discoverSiteUrls(
 export async function readSite(
   domain: string,
   maxPages: number = MAX_PAGES,
+  contextUsage?: RenderUsage,
 ): Promise<SiteReadResult> {
   const discovered = await discoverSiteUrls(domain, maxPages);
   if (discovered.blocked) {
     return { pages: [], blocked: true };
   }
-  const site = await readPages(discovered.urls, maxPages);
+  const site = await readPages(discovered.urls, maxPages, contextUsage);
   const root = new URL(discovered.urls[0]);
   if (!site.blocked || root.hostname.startsWith("www.")) return site;
   // Some sites only serve their www host (e.g. the bare domain's TLS
@@ -217,5 +256,5 @@ export async function readSite(
   root.hostname = `www.${root.hostname}`;
   // The setter ignores invalid hosts, so IP literals keep their original host.
   if (!root.hostname.startsWith("www.")) return site;
-  return readSite(root.toString(), maxPages);
+  return readSite(root.toString(), maxPages, contextUsage);
 }

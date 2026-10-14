@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { readPages, readSite } from "@/server/lib/scrape";
 
+vi.mock("@/server/lib/runtime-env", () => ({
+  getOptionalEnvValue: async () => "context-test-key",
+}));
+
 describe("readSite SSRF guard", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn());
@@ -97,5 +101,48 @@ describe("readSite", () => {
     const result = await readSite("93.184.216.34");
 
     expect(result.blocked).toBe(true);
+  });
+});
+
+describe("readSite on a throttled Shopify store", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("reads the page through Context and counts its credit", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL) => {
+        const url = String(input);
+        if (url.includes("dns-query"))
+          // In Shopify's range, so the 429 below is Shopify's edge.
+          return Response.json({
+            Status: 0,
+            Answer: [{ type: 1, data: "23.227.38.65" }],
+          });
+        if (url.startsWith("https://api.context.dev/"))
+          return Response.json({
+            success: true,
+            type: "html",
+            html: "<title>Store</title><p>Linen sheets</p>",
+            metadata: { finalUrl: "https://store.example.com/" },
+            finalDOMState: "loaded",
+            key_metadata: { credits_consumed: 1 },
+          });
+        return new Response(null, { status: 429 });
+      }),
+    );
+    const usage = { cloudflareAttempts: 0, contextCredits: 0 };
+
+    const result = await readSite("store.example.com", 3, usage);
+
+    expect(result.pages).toEqual([
+      {
+        url: "https://store.example.com/",
+        title: "Store",
+        text: "Store Linen sheets",
+      },
+    ]);
+    expect(usage.contextCredits).toBe(1);
   });
 });

@@ -17,6 +17,10 @@ import {
 } from "@/server/lib/runtime-env";
 import { readSite } from "@/server/lib/scrape";
 import {
+  CONTEXT_USD_PER_CREDIT,
+  type RenderUsage,
+} from "@/shared/audit-rendering";
+import {
   MAX_SUGGESTED_KEYWORDS,
   WEBSITE_UNREADABLE_MESSAGE,
   websiteResearchSchema,
@@ -78,12 +82,12 @@ export async function researchWebsite(
     return websiteResearchSchema.parse(preserved);
   // Each field is independent: saved context supplies the evidence, and the
   // model only receives output fields and tools for the missing information.
-  const site = missingOverview
-    ? await readSite(project.domain ? `https://${domain}` : website, 3)
-    : null;
-  if (site && site.pages.length === 0)
-    throw new AppError("VALIDATION_ERROR", WEBSITE_UNREADABLE_MESSAGE);
   const spend: ResearchSpend[] = [];
+  // Throttled Shopify pages are read through Context, billed with the research.
+  const contextUsage: RenderUsage = {
+    cloudflareAttempts: 0,
+    contextCredits: 0,
+  };
   const sources = new Set<string>();
   let searched = false;
   let searchSucceeded = false;
@@ -118,6 +122,15 @@ export async function researchWebsite(
       : {}),
   });
   try {
+    const site = missingOverview
+      ? await readSite(
+          project.domain ? `https://${domain}` : website,
+          3,
+          contextUsage,
+        )
+      : null;
+    if (site && site.pages.length === 0)
+      throw new AppError("VALIDATION_ERROR", WEBSITE_UNREADABLE_MESSAGE);
     const result = await generateText({
       model: buildChatAgentModel(
         await getRequiredEnvValue("OPENROUTER_API_KEY"),
@@ -269,7 +282,8 @@ export async function researchWebsite(
                         scope: "domain",
                       },
                     ).apiTarget;
-                    const pages = (await readSite(candidate, 2)).pages;
+                    const pages = (await readSite(candidate, 2, contextUsage))
+                      .pages;
                     for (const page of pages) sources.add(page.url);
                     return { domain: competitorDomain, pages };
                   }),
@@ -344,6 +358,13 @@ export async function researchWebsite(
     }
     return research;
   } finally {
+    if (contextUsage.contextCredits > 0)
+      spend.push({
+        provider: "context",
+        creditFeature: "agent",
+        costUsd: contextUsage.contextCredits * CONTEXT_USD_PER_CREDIT,
+        operation: "project_website_research",
+      });
     await billResearchSpend(customer, spend);
   }
 }
