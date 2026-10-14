@@ -40,7 +40,7 @@ const termsLinkClassName =
 // clicking it is the affirmative acceptance the signup hook records.
 export function TermsAgreementNotice({ action }: { action: string }) {
   return (
-    <p className="text-sm leading-relaxed text-muted-foreground">
+    <p className="text-center text-sm leading-relaxed text-muted-foreground">
       {action}, you agree to our{" "}
       <a
         href={TERMS_URL}
