@@ -22,6 +22,7 @@ import {
   isHostedServerAuthMode,
 } from "@/server/lib/runtime-env";
 import { getPublicOrigin } from "@/server/mcp/public-origin";
+import { pinMetaCheckout } from "@/server/referrals/meta";
 import { requireAuthenticatedContext } from "@/serverFunctions/middleware";
 
 export const getBillingAccount = createServerFn({ method: "POST" })
@@ -39,12 +40,17 @@ export const createPlanCheckout = createServerFn({ method: "POST" })
       redirectTo: z.string(),
     }),
   )
-  .handler(({ data, context }) =>
-    createPlanCheckoutUrl(context, {
+  .handler(async ({ data, context }) => {
+    const request = getRequest();
+    const url = await createPlanCheckoutUrl(context, {
       ...data,
-      origin: getPublicOrigin(getRequest()),
-    }),
-  );
+      origin: getPublicOrigin(request),
+    });
+    // The buyer's browser is only here, not at the webhook that confirms the
+    // subscription, so the Meta ad conversion is set up now.
+    await pinMetaCheckout(context.organizationId, request);
+    return url;
+  });
 
 export const createTopUpCheckout = createServerFn({ method: "POST" })
   .middleware(requireAuthenticatedContext)
