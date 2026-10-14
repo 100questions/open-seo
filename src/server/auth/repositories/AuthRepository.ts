@@ -281,6 +281,15 @@ async function setLastActiveOrganization(
     .where(eq(authUser.id, userId));
 }
 
+async function isAnalyticsOptedOut(userId: string) {
+  const [record] = await db
+    .select({ analyticsOptedOut: authUser.analyticsOptedOut })
+    .from(authUser)
+    .where(eq(authUser.id, userId))
+    .limit(1);
+  return record?.analyticsOptedOut === true;
+}
+
 export const AuthRepository = {
   upsertDelegatedOrganization,
   findFirstOrganizationIdForUser,
@@ -295,4 +304,5 @@ export const AuthRepository = {
   getHostedUser,
   getHostedUserNames,
   hasPendingInvitationForEmail,
+  isAnalyticsOptedOut,
 } as const;

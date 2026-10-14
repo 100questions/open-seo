@@ -44,6 +44,7 @@ import { Route as ApiCompetitorKeywordFinderRouteImport } from './routes/api/com
 import { Route as ApiDomainAgeCheckerRouteImport } from './routes/api/domain-age-checker'
 import { Route as ApiEventRouteImport } from './routes/api/event'
 import { Route as ApiKeywordGeneratorRouteImport } from './routes/api/keyword-generator'
+import { Route as ApiPrivacyRegionRouteImport } from './routes/api/privacy-region'
 import { Route as ApiSpamScoreCheckerRouteImport } from './routes/api/spam-score-checker'
 import { Route as ApiSubscribeRouteImport } from './routes/api/subscribe'
 import { Route as ApiWebsiteTrafficCheckerRouteImport } from './routes/api/website-traffic-checker'
@@ -284,6 +285,11 @@ const ApiEventRoute = ApiEventRouteImport.update({
 const ApiKeywordGeneratorRoute = ApiKeywordGeneratorRouteImport.update({
   id: '/api/keyword-generator',
   path: '/api/keyword-generator',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPrivacyRegionRoute = ApiPrivacyRegionRouteImport.update({
+  id: '/api/privacy-region',
+  path: '/api/privacy-region',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiSpamScoreCheckerRoute = ApiSpamScoreCheckerRouteImport.update({
@@ -642,6 +648,7 @@ export interface FileRoutesByFullPath {
   '/api/domain-age-checker': typeof ApiDomainAgeCheckerRoute
   '/api/event': typeof ApiEventRoute
   '/api/keyword-generator': typeof ApiKeywordGeneratorRoute
+  '/api/privacy-region': typeof ApiPrivacyRegionRoute
   '/api/spam-score-checker': typeof ApiSpamScoreCheckerRoute
   '/api/subscribe': typeof ApiSubscribeRoute
   '/api/website-traffic-checker': typeof ApiWebsiteTrafficCheckerRoute
@@ -732,6 +739,7 @@ export interface FileRoutesByTo {
   '/api/domain-age-checker': typeof ApiDomainAgeCheckerRoute
   '/api/event': typeof ApiEventRoute
   '/api/keyword-generator': typeof ApiKeywordGeneratorRoute
+  '/api/privacy-region': typeof ApiPrivacyRegionRoute
   '/api/spam-score-checker': typeof ApiSpamScoreCheckerRoute
   '/api/subscribe': typeof ApiSubscribeRoute
   '/api/website-traffic-checker': typeof ApiWebsiteTrafficCheckerRoute
@@ -824,6 +832,7 @@ export interface FileRoutesById {
   '/api/domain-age-checker': typeof ApiDomainAgeCheckerRoute
   '/api/event': typeof ApiEventRoute
   '/api/keyword-generator': typeof ApiKeywordGeneratorRoute
+  '/api/privacy-region': typeof ApiPrivacyRegionRoute
   '/api/spam-score-checker': typeof ApiSpamScoreCheckerRoute
   '/api/subscribe': typeof ApiSubscribeRoute
   '/api/website-traffic-checker': typeof ApiWebsiteTrafficCheckerRoute
@@ -917,6 +926,7 @@ export interface FileRouteTypes {
     | '/api/domain-age-checker'
     | '/api/event'
     | '/api/keyword-generator'
+    | '/api/privacy-region'
     | '/api/spam-score-checker'
     | '/api/subscribe'
     | '/api/website-traffic-checker'
@@ -1007,6 +1017,7 @@ export interface FileRouteTypes {
     | '/api/domain-age-checker'
     | '/api/event'
     | '/api/keyword-generator'
+    | '/api/privacy-region'
     | '/api/spam-score-checker'
     | '/api/subscribe'
     | '/api/website-traffic-checker'
@@ -1098,6 +1109,7 @@ export interface FileRouteTypes {
     | '/api/domain-age-checker'
     | '/api/event'
     | '/api/keyword-generator'
+    | '/api/privacy-region'
     | '/api/spam-score-checker'
     | '/api/subscribe'
     | '/api/website-traffic-checker'
@@ -1166,6 +1178,7 @@ export interface RootRouteChildren {
   ApiDomainAgeCheckerRoute: typeof ApiDomainAgeCheckerRoute
   ApiEventRoute: typeof ApiEventRoute
   ApiKeywordGeneratorRoute: typeof ApiKeywordGeneratorRoute
+  ApiPrivacyRegionRoute: typeof ApiPrivacyRegionRoute
   ApiSpamScoreCheckerRoute: typeof ApiSpamScoreCheckerRoute
   ApiSubscribeRoute: typeof ApiSubscribeRoute
   ApiWebsiteTrafficCheckerRoute: typeof ApiWebsiteTrafficCheckerRoute
@@ -1424,6 +1437,13 @@ declare module '@tanstack/react-router' {
       path: '/api/keyword-generator'
       fullPath: '/api/keyword-generator'
       preLoaderRoute: typeof ApiKeywordGeneratorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/privacy-region': {
+      id: '/api/privacy-region'
+      path: '/api/privacy-region'
+      fullPath: '/api/privacy-region'
+      preLoaderRoute: typeof ApiPrivacyRegionRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/spam-score-checker': {
@@ -2015,6 +2035,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiDomainAgeCheckerRoute: ApiDomainAgeCheckerRoute,
   ApiEventRoute: ApiEventRoute,
   ApiKeywordGeneratorRoute: ApiKeywordGeneratorRoute,
+  ApiPrivacyRegionRoute: ApiPrivacyRegionRoute,
   ApiSpamScoreCheckerRoute: ApiSpamScoreCheckerRoute,
   ApiSubscribeRoute: ApiSubscribeRoute,
   ApiWebsiteTrafficCheckerRoute: ApiWebsiteTrafficCheckerRoute,

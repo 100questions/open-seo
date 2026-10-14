@@ -4,6 +4,8 @@ import { ONBOARDING_STEPS } from "./onboardingModel";
 import { WebsiteOnboardingStep } from "./WebsiteOnboardingStep";
 import { AgentSetup } from "@/client/features/ai-mcp/AgentSetup";
 import { SearchConsoleOnboardingStep } from "./SearchConsoleOnboardingStep";
+import { AnalyticsOnboardingStep } from "./AnalyticsOnboardingStep";
+import { isHostedClientAuthMode } from "@/lib/auth-mode";
 
 type PostSignupOnboardingProps = {
   step: number;
@@ -29,12 +31,19 @@ export function PostSignupOnboarding({
   accountMenu,
   suggestedDomain,
 }: PostSignupOnboardingProps) {
+  // Hosted only: self-hosted installs don't run PostHog.
+  const askAnalytics = isHostedClientAuthMode();
   return (
     <>
       {accountMenu}
       <OnboardingCard
         step={step + 1}
-        steps={["Website", "Google Search Console", "Agent setup"]}
+        steps={[
+          "Website",
+          "Google Search Console",
+          "Agent setup",
+          ...(askAnalytics ? ["Analytics"] : []),
+        ]}
         onStepChange={onStepChange}
         disabled={isSaving}
       >
@@ -51,8 +60,15 @@ export function PostSignupOnboarding({
               onBack={onBack}
               onSkip={onSkip}
             />
+          ) : ONBOARDING_STEPS[step] === "agent_setup" || !askAnalytics ? (
+            <AgentSetup
+              onNext={askAnalytics ? onNext : onFinish}
+              nextLabel={askAnalytics ? "Continue" : "Finish"}
+              onBack={onBack}
+              disabled={isSaving}
+            />
           ) : (
-            <AgentSetup onNext={onFinish} onBack={onBack} disabled={isSaving} />
+            <AnalyticsOnboardingStep onBack={onBack} onFinish={onFinish} />
           )}
         </fieldset>
       </OnboardingCard>

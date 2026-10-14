@@ -86,6 +86,19 @@ export async function captureServerEvent(args: {
   if (!client) return;
 
   try {
+    // Product analytics follows the user's choice (synced from the browser).
+    // Imported lazily so modules that only report events don't pull in the
+    // database client at load time. Scoped because some callers, like the
+    // chat agent's telemetry, run outside a request's Postgres scope.
+    const [{ withPgClient }, { AuthRepository }] = await Promise.all([
+      import("@/db"),
+      import("@/server/auth/repositories/AuthRepository"),
+    ]);
+    const optedOut = await withPgClient(() =>
+      AuthRepository.isAnalyticsOptedOut(args.distinctId),
+    );
+    if (optedOut) return;
+
     client.capture({
       distinctId: args.distinctId,
       event: args.event,

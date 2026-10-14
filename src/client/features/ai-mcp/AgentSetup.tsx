@@ -9,10 +9,12 @@ import { Button } from "@/client/components/ui/button";
 export function AgentSetup({
   onNext,
   onBack,
+  nextLabel = "Finish",
   disabled = false,
 }: {
   onNext: () => void;
   onBack: () => void;
+  nextLabel?: string;
   disabled?: boolean;
 }) {
   const prompt = getAgentSetupPrompt(window.location.origin);
@@ -43,7 +45,7 @@ export function AgentSetup({
               className="h-8 gap-2 px-3 text-xs font-semibold"
               onClick={onNext}
             >
-              Finish <ArrowRight className="size-4" />
+              {nextLabel} <ArrowRight className="size-4" />
             </Button>
           }
         />

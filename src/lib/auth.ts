@@ -23,6 +23,11 @@ import { onInvitationAccepted } from "@/server/auth/invited-member";
 import { AuthRepository } from "@/server/auth/repositories/AuthRepository";
 import { captureDubReferralSignup } from "@/server/referrals/dub";
 import {
+  effectivePrivacyChoices,
+  readPrivacyCookie,
+  requiresOptIn,
+} from "@/shared/privacy-choices";
+import {
   sendHostedPasswordResetEmail,
   sendHostedVerificationEmail,
   upsertHostedSignupContact,
@@ -38,6 +43,16 @@ const hostedBaseUrlSchema = z
       (url.protocol === "http:" && url.hostname === "localhost")
     );
   }, "BETTER_AUTH_URL must use https or localhost");
+
+// The optional-tracking choices that apply to a signup request: the browser's
+// saved choice, or the defaults for its location.
+function signupPrivacyChoices(request: Request | undefined) {
+  return effectivePrivacyChoices({
+    saved: readPrivacyCookie(request?.headers.get("cookie")),
+    optIn: requiresOptIn(request?.headers.get("cf-ipcountry")),
+    globalPrivacyControl: request?.headers.get("sec-gpc") === "1",
+  });
+}
 
 function createAuth() {
   // Hosted needs the real configured URL (cookies, callbacks, /api/auth routes
@@ -213,7 +228,7 @@ function createAuth() {
           // Hosted only: keep cheap mass-signups off the free plan by rejecting
           // throwaway-inbox domains before the user row is created. Self-hosted
           // has no shared credit pool to protect, so it's left untouched.
-          before: async (user) => {
+          before: async (user, ctx) => {
             if (
               isHostedAuthMode(env.AUTH_MODE) &&
               isDisposableEmailDomain(user.email)
@@ -222,11 +237,20 @@ function createAuth() {
                 message: "Please sign up with a non-disposable email address.",
               });
             }
-            return { data: user };
+            // Start new accounts with the analytics choice that applies to
+            // this browser, so server-side analytics doesn't run for a
+            // visitor who hasn't opted in where opt-in is required.
+            const choices = signupPrivacyChoices(ctx?.request);
+            return { data: { ...user, analyticsOptedOut: !choices.analytics } };
           },
           after: async (user, ctx) => {
             await syncHostedSignupContact(user);
-            if (isHostedAuthMode(env.AUTH_MODE)) {
+            // Partner attribution is an advertising/referral choice: an older
+            // dub_id cookie must not credit a partner without it.
+            if (
+              isHostedAuthMode(env.AUTH_MODE) &&
+              signupPrivacyChoices(ctx?.request).ads
+            ) {
               await captureDubReferralSignup(user.id, ctx?.request);
             }
           },

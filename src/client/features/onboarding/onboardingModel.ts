@@ -6,6 +6,8 @@ export const ONBOARDING_STEPS = [
   "website",
   "search_console",
   "agent_setup",
+  // Hosted only (PostSignupOnboarding).
+  "analytics",
 ] as const;
 export const ONBOARDING_LAST_STEP = ONBOARDING_STEPS.length - 1;
 
