@@ -223,6 +223,17 @@ export default {
         } catch (err) {
           console.error("[cron] Dub referral sale sweep failed:", err);
         }
+
+        // Daily cleanup of Google grants no project uses any more, as the
+        // hosted privacy policy promises.
+        try {
+          const { purgeUnusedGoogleData } =
+            await import("@/server/features/google/googleDataRetention");
+          const purged = await withPgClient(() => purgeUnusedGoogleData());
+          console.log("[retention] purged unused Google data", purged);
+        } catch (err) {
+          console.error("[cron] Google data cleanup failed:", err);
+        }
       }
       return;
     }

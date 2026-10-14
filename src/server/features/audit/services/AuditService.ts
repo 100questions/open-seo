@@ -19,6 +19,7 @@ import {
   type AuditLimitTier,
 } from "@/server/features/audit/services/audit-capacity";
 import { AppError } from "@/server/lib/errors";
+import { deleteR2Prefix } from "@/server/lib/r2";
 import { RENDERED_MAX_AUDIT_PAGES } from "@/shared/audit-limits";
 import { AuditProgressKV } from "@/server/lib/audit/progress-kv";
 import {
@@ -324,6 +325,13 @@ async function remove(auditId: string, projectId: string) {
     await env.AUDIT_ENGINE.destroyScratchpad(auditId);
   } catch (error) {
     console.warn(`Failed to destroy audit scratchpad ${auditId}:`, error);
+  }
+  // Best-effort: the stored Lighthouse reports. A miss is swept when the
+  // account is erased (storage-erasure.ts).
+  try {
+    await deleteR2Prefix(env.R2, `site-audit/${projectId}/${auditId}/`);
+  } catch (error) {
+    console.warn(`Failed to delete audit files ${auditId}:`, error);
   }
 }
 

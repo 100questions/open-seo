@@ -91,7 +91,7 @@ async function getKeywords(projectId: string, organizationId: string) {
       refreshError: null,
     };
   return DashboardCacheService.readThrough({
-    namespace: "dashboard:gsc-keywords-v2",
+    namespace: DashboardCacheService.gscNamespace(projectId, "keywords"),
     organizationId,
     params: {
       projectId,
@@ -169,7 +169,10 @@ async function getEmergingQueries(projectId: string, organizationId: string) {
     };
   }
   return DashboardCacheService.readThrough({
-    namespace: "dashboard:emerging-queries",
+    namespace: DashboardCacheService.gscNamespace(
+      projectId,
+      "emerging-queries",
+    ),
     organizationId,
     params: {
       projectId,
