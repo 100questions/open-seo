@@ -407,6 +407,13 @@
       "when": 1791966822916,
       "tag": "0057_heavy_johnny_storm",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "6",
+      "when": 1792011398968,
+      "tag": "0058_flaky_devos",
+      "breakpoints": true
     }
   ]
 }

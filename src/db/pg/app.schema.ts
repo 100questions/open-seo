@@ -76,6 +76,9 @@ export const projects = pgTable(
     // The Prompt Research keywords from AI visibility setup, one
     // per line, most important first. Null until setup runs.
     aiResearchKeywords: text("ai_research_keywords"),
+    // The IndexNow key the site hosts at /{key}.txt. Public by design, so it
+    // is stored as plain text. Null until IndexNow is first used.
+    indexnowKey: text("indexnow_key"),
   },
   (table) => [
     // Only the auto-created Default/null-domain project is a singleton. This

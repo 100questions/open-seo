@@ -151,6 +151,7 @@ OpenSEO MCP exposes tools for SEO research workflows:
 - Read and export saved AI answers, trends, citations, and competitor appearances without using credits.
 - Read first-party Google Search Console performance (clicks, impressions, CTR, position).
 - Inspect index status, crawl, and canonical for specific URLs (up to 10 per call).
+- Tell Bing and other IndexNow search engines which pages on your site were added, changed, or removed (free, no credits). Your site hosts the project's key file, shown in Settings > Integrations. Google doesn't use IndexNow.
 - Read and update a project's shared context: business, goal, positioning, writing preferences, competitors, key pages, and a research log (free, no credits).
 - Save and read HTML reports on a project (free, no credits). New reports are private. On hosted OpenSEO, explicitly ask the agent to publish with `set_report_sharing` (`public: true`) or revoke the link (`public: false`). `get_report` returns `report.shareUrl` for an existing public link, or `null` when unavailable.
 - List a project's report templates, and save a reusable report brief to the project (free, no credits).
