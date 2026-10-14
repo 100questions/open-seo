@@ -55,6 +55,7 @@ import { Route as DocsSplatRouteImport } from './routes/docs/$'
 import { Route as DocsLlmsDottxtRouteImport } from './routes/docs/llms[.]txt'
 import { Route as GuidesIndexRouteImport } from './routes/guides/index'
 import { Route as GuidesSplatRouteImport } from './routes/guides/$'
+import { Route as JsMetaDotjsRouteImport } from './routes/js/meta[.]js'
 import { Route as JsScriptDotjsRouteImport } from './routes/js/script[.]js'
 import { Route as MarketingFeaturesIndexRouteImport } from './routes/_marketing/features/index'
 import { Route as MarketingFeaturesAiBrandVisibilityRouteImport } from './routes/_marketing/features/ai-brand-visibility'
@@ -341,6 +342,11 @@ const GuidesIndexRoute = GuidesIndexRouteImport.update({
 const GuidesSplatRoute = GuidesSplatRouteImport.update({
   id: '/guides/$',
   path: '/guides/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JsMetaDotjsRoute = JsMetaDotjsRouteImport.update({
+  id: '/js/meta.js',
+  path: '/js/meta.js',
   getParentRoute: () => rootRouteImport,
 } as any)
 const JsScriptDotjsRoute = JsScriptDotjsRouteImport.update({
@@ -656,6 +662,7 @@ export interface FileRoutesByFullPath {
   '/docs/$': typeof DocsSplatRoute
   '/docs/llms.txt': typeof DocsLlmsDottxtRoute
   '/guides/$': typeof GuidesSplatRoute
+  '/js/meta.js': typeof JsMetaDotjsRoute
   '/js/script.js': typeof JsScriptDotjsRoute
   '/blogs/': typeof BlogsIndexRoute
   '/docs/': typeof DocsIndexRoute
@@ -747,6 +754,7 @@ export interface FileRoutesByTo {
   '/docs/$': typeof DocsSplatRoute
   '/docs/llms.txt': typeof DocsLlmsDottxtRoute
   '/guides/$': typeof GuidesSplatRoute
+  '/js/meta.js': typeof JsMetaDotjsRoute
   '/js/script.js': typeof JsScriptDotjsRoute
   '/blogs': typeof BlogsIndexRoute
   '/docs': typeof DocsIndexRoute
@@ -840,6 +848,7 @@ export interface FileRoutesById {
   '/docs/$': typeof DocsSplatRoute
   '/docs/llms.txt': typeof DocsLlmsDottxtRoute
   '/guides/$': typeof GuidesSplatRoute
+  '/js/meta.js': typeof JsMetaDotjsRoute
   '/js/script.js': typeof JsScriptDotjsRoute
   '/_marketing/': typeof MarketingIndexRoute
   '/blogs/': typeof BlogsIndexRoute
@@ -934,6 +943,7 @@ export interface FileRouteTypes {
     | '/docs/$'
     | '/docs/llms.txt'
     | '/guides/$'
+    | '/js/meta.js'
     | '/js/script.js'
     | '/blogs/'
     | '/docs/'
@@ -1025,6 +1035,7 @@ export interface FileRouteTypes {
     | '/docs/$'
     | '/docs/llms.txt'
     | '/guides/$'
+    | '/js/meta.js'
     | '/js/script.js'
     | '/blogs'
     | '/docs'
@@ -1117,6 +1128,7 @@ export interface FileRouteTypes {
     | '/docs/$'
     | '/docs/llms.txt'
     | '/guides/$'
+    | '/js/meta.js'
     | '/js/script.js'
     | '/_marketing/'
     | '/blogs/'
@@ -1186,6 +1198,7 @@ export interface RootRouteChildren {
   DocsSplatRoute: typeof DocsSplatRoute
   DocsLlmsDottxtRoute: typeof DocsLlmsDottxtRoute
   GuidesSplatRoute: typeof GuidesSplatRoute
+  JsMetaDotjsRoute: typeof JsMetaDotjsRoute
   JsScriptDotjsRoute: typeof JsScriptDotjsRoute
   BlogsIndexRoute: typeof BlogsIndexRoute
   DocsIndexRoute: typeof DocsIndexRoute
@@ -1514,6 +1527,13 @@ declare module '@tanstack/react-router' {
       path: '/guides/$'
       fullPath: '/guides/$'
       preLoaderRoute: typeof GuidesSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/js/meta.js': {
+      id: '/js/meta.js'
+      path: '/js/meta.js'
+      fullPath: '/js/meta.js'
+      preLoaderRoute: typeof JsMetaDotjsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/js/script.js': {
@@ -2043,6 +2063,7 @@ const rootRouteChildren: RootRouteChildren = {
   DocsSplatRoute: DocsSplatRoute,
   DocsLlmsDottxtRoute: DocsLlmsDottxtRoute,
   GuidesSplatRoute: GuidesSplatRoute,
+  JsMetaDotjsRoute: JsMetaDotjsRoute,
   JsScriptDotjsRoute: JsScriptDotjsRoute,
   BlogsIndexRoute: BlogsIndexRoute,
   DocsIndexRoute: DocsIndexRoute,

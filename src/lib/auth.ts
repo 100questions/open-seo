@@ -23,11 +23,10 @@ import { resolveSignInHostedOrganization } from "@/server/auth/default-hosted-or
 import { onInvitationAccepted } from "@/server/auth/invited-member";
 import { AuthRepository } from "@/server/auth/repositories/AuthRepository";
 import { captureDubReferralSignup } from "@/server/referrals/dub";
+import { captureMetaSignup } from "@/server/referrals/meta";
 import {
-  effectivePrivacyChoices,
   productUpdatesOnByDefault,
-  readPrivacyCookie,
-  requiresOptIn,
+  requestPrivacyChoices,
 } from "@/shared/privacy-choices";
 import {
   sendHostedPasswordResetEmail,
@@ -45,16 +44,6 @@ const hostedBaseUrlSchema = z
       (url.protocol === "http:" && url.hostname === "localhost")
     );
   }, "BETTER_AUTH_URL must use https or localhost");
-
-// The optional-tracking choices that apply to a signup request: the browser's
-// saved choice, or the defaults for its location.
-function signupPrivacyChoices(request: Request | undefined) {
-  return effectivePrivacyChoices({
-    saved: readPrivacyCookie(request?.headers.get("cookie")),
-    optIn: requiresOptIn(request?.headers.get("cf-ipcountry")),
-    globalPrivacyControl: request?.headers.get("sec-gpc") === "1",
-  });
-}
 
 function createAuth() {
   // Hosted needs the real configured URL (cookies, callbacks, /api/auth routes
@@ -242,7 +231,7 @@ function createAuth() {
             // Start new accounts with the analytics choice that applies to
             // this browser, so server-side analytics doesn't run for a
             // visitor who hasn't opted in where opt-in is required.
-            const choices = signupPrivacyChoices(ctx?.request);
+            const choices = requestPrivacyChoices(ctx?.request);
             const now = new Date();
             // Every hosted signup path (email form, Google on the sign-up or
             // sign-in page) shows the Terms clickwrap next to its button.
@@ -261,13 +250,14 @@ function createAuth() {
           },
           after: async (user, ctx) => {
             await syncHostedSignupContact(user);
-            // Partner attribution is an advertising/referral choice: an older
-            // dub_id cookie must not credit a partner without it.
-            if (
-              isHostedAuthMode(env.AUTH_MODE) &&
-              signupPrivacyChoices(ctx?.request).ads
-            ) {
-              await captureDubReferralSignup(user.id, ctx?.request);
+            if (isHostedAuthMode(env.AUTH_MODE)) {
+              // Partner attribution is a referral choice: an older dub_id
+              // cookie must not credit a partner without it.
+              if (requestPrivacyChoices(ctx?.request).referrals) {
+                await captureDubReferralSignup(user.id, ctx?.request);
+              }
+              // Sent only if the separate advertising (Meta) choice allows it.
+              captureMetaSignup(ctx?.request);
             }
           },
         },

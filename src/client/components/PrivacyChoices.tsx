@@ -62,9 +62,12 @@ export function usePrivacyChoices() {
     readCookies,
   );
   const saved = React.useMemo(() => readPrivacyCookie(cookies), [cookies]);
-  const regionOptIn = usePrivacyRegion(isHosted && saved === null);
+  // Choices not saved yet follow the region. That includes the Meta choice in
+  // a cookie saved before it existed, since saving analytics writes it too.
+  const needsRegion = saved?.advertising === undefined;
+  const regionOptIn = usePrivacyRegion(isHosted && needsRegion);
 
-  const optIn = saved ? false : regionOptIn;
+  const optIn = needsRegion ? regionOptIn : false;
   if (!isHosted || optIn === undefined) return null;
 
   // A browser without a saved choice still honors an analytics opt-out the

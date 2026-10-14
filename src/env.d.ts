@@ -57,6 +57,10 @@ declare namespace Cloudflare {
     // Dub referral conversion tracking (hosted only); all Dub code no-ops
     // when unset.
     DUB_API_KEY?: string;
+    // Meta ad signup attribution via the Conversions API (hosted only); no-ops
+    // unless both are set.
+    META_PIXEL_ID?: string;
+    META_CONVERSIONS_API_TOKEN?: string;
     // HMAC secret for the operator-only GDPR storage-erasure endpoint.
     GDPR_ERASURE_SECRET?: string;
 

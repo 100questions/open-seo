@@ -9,7 +9,16 @@ export type PrivacyChoices = {
    *  not covered here. */
   analytics: boolean;
   /** Partner referral attribution (Dub's referral cookie). */
-  ads: boolean;
+  referrals: boolean;
+  /** Meta ad measurement: the Meta Pixel on openseo.so and the app's signup
+   *  event to Meta's Conversions API. */
+  advertising: boolean;
+};
+
+/** Choices as saved in the cookie. A cookie saved before Meta had its own
+ *  choice has no `advertising`, so the region default applies to it. */
+type SavedPrivacyChoices = Omit<PrivacyChoices, "advertising"> & {
+  advertising?: boolean;
 };
 
 const PRIVACY_COOKIE = "openseo_privacy";
@@ -46,34 +55,60 @@ export function productUpdatesOnByDefault(
 }
 
 export function defaultPrivacyChoices(optIn: boolean): PrivacyChoices {
-  return { analytics: !optIn, ads: !optIn };
+  return { analytics: !optIn, referrals: !optIn, advertising: !optIn };
 }
 
 /** Saved choices from a Cookie header or `document.cookie`, or null when the
  *  visitor hasn't chosen yet (or the cookie is unreadable). */
 export function readPrivacyCookie(
   cookieHeader: string | null | undefined,
-): PrivacyChoices | null {
+): SavedPrivacyChoices | null {
   const raw = cookieHeader
     ?.split(";")
     .map((part) => part.trim())
     .find((part) => part.startsWith(`${PRIVACY_COOKIE}=`))
     ?.slice(PRIVACY_COOKIE.length + 1);
-  // Format: "a1.d0" — analytics, ads.
-  const match = /^a([01])\.d([01])$/.exec(raw ?? "");
+  // Format: "a1.d0.m1" — analytics, Dub referrals, Meta advertising. Cookies
+  // saved before the Meta choice existed stop after the "d" flag.
+  const match = /^a([01])\.d([01])(?:\.m([01]))?$/.exec(raw ?? "");
   if (!match) return null;
-  return { analytics: match[1] === "1", ads: match[2] === "1" };
+  return {
+    analytics: match[1] === "1",
+    referrals: match[2] === "1",
+    advertising: match[3] ? match[3] === "1" : undefined,
+  };
 }
 
-/** Choices that apply right now. Global Privacy Control always turns off
+/** Choices that apply right now: the saved ones, with the region default for
+ *  any the visitor hasn't made. Global Privacy Control always turns off
  *  advertising and referral tracking, whatever was saved. */
 export function effectivePrivacyChoices(args: {
-  saved: PrivacyChoices | null;
+  saved: SavedPrivacyChoices | null;
   optIn: boolean;
   globalPrivacyControl: boolean;
 }): PrivacyChoices {
-  const choices = args.saved ?? defaultPrivacyChoices(args.optIn);
-  return args.globalPrivacyControl ? { ...choices, ads: false } : choices;
+  const defaults = defaultPrivacyChoices(args.optIn);
+  const choices = args.saved
+    ? {
+        ...args.saved,
+        advertising: args.saved.advertising ?? defaults.advertising,
+      }
+    : defaults;
+  return args.globalPrivacyControl
+    ? { ...choices, referrals: false, advertising: false }
+    : choices;
+}
+
+/** The choices that apply to a request: the browser's saved choices, or the
+ *  defaults for its location, under its Global Privacy Control header. */
+export function requestPrivacyChoices(
+  request: Request | undefined,
+): PrivacyChoices {
+  return effectivePrivacyChoices({
+    saved: readPrivacyCookie(request?.headers.get("cookie")),
+    optIn: requiresOptIn(request?.headers.get("cf-ipcountry")),
+    globalPrivacyControl: request?.headers.get("sec-gpc") === "1",
+  });
 }
 
 // ---- Browser helpers ----
@@ -102,14 +137,19 @@ const flag = (value: boolean) => (value ? "1" : "0");
 export function savePrivacyChoices(choices: PrivacyChoices) {
   writeCookie(
     PRIVACY_COOKIE,
-    `a${flag(choices.analytics)}.d${flag(choices.ads)}`,
+    `a${flag(choices.analytics)}.d${flag(choices.referrals)}.m${flag(choices.advertising)}`,
     PRIVACY_COOKIE_MAX_AGE_SECONDS,
   );
   // Withdrawing referral permission removes Dub's cookies so a later signup
   // isn't attributed to the partner. Sales of a customer attributed at signup
   // are still reported from the server.
-  if (!choices.ads) {
+  if (!choices.referrals) {
     for (const name of ["dub_id", "dub_partner_data"]) writeCookie(name, "", 0);
+  }
+  // Withdrawing advertising permission removes the Meta Pixel's browser and
+  // click ids, so a later signup isn't attributed to an ad.
+  if (!choices.advertising) {
+    for (const name of ["_fbp", "_fbc"]) writeCookie(name, "", 0);
   }
   window.dispatchEvent(new Event(PRIVACY_CHOICES_CHANGED_EVENT));
 }

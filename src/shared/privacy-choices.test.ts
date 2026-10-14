@@ -30,17 +30,35 @@ describe("privacy choices", () => {
         optIn: true,
         globalPrivacyControl: false,
       }),
-    ).toEqual({ analytics: false, ads: false });
+    ).toEqual({ analytics: false, referrals: false, advertising: false });
   });
 
   it("lets Global Privacy Control override a saved advertising choice", () => {
-    const saved = readPrivacyCookie("other=1; openseo_privacy=a1.d1");
+    const saved = readPrivacyCookie("other=1; openseo_privacy=a1.d1.m1");
     expect(
       effectivePrivacyChoices({
         saved,
         optIn: false,
         globalPrivacyControl: true,
       }),
-    ).toEqual({ analytics: true, ads: false });
+    ).toEqual({ analytics: true, referrals: false, advertising: false });
+  });
+
+  it("applies the region default to Meta in a cookie saved before that choice existed", () => {
+    const saved = readPrivacyCookie("openseo_privacy=a1.d1");
+    expect(
+      effectivePrivacyChoices({
+        saved,
+        optIn: true,
+        globalPrivacyControl: false,
+      }),
+    ).toEqual({ analytics: true, referrals: true, advertising: false });
+    expect(
+      effectivePrivacyChoices({
+        saved,
+        optIn: false,
+        globalPrivacyControl: false,
+      }).advertising,
+    ).toBe(true);
   });
 });

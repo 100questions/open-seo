@@ -12,26 +12,49 @@ const OPEN_PRIVACY_CHOICES_EVENT = "openseo:open-privacy-choices";
 const PLAUSIBLE_IGNORE = "plausible_ignore";
 
 // Plausible counts visits without cookies for everyone (the dialog offers its
-// opt-out). The only consent-based tracking here is Dub's referral cookie on
-// partner links: loaded where allowed, asked about where opt-in is required.
-// The footer's dialog also holds the app's analytics choice (one shared cookie).
+// opt-out). The consent-based tracking here is the Meta Pixel and Dub's
+// referral cookie on partner links. Each loads where the visitor's choice or
+// region allows it; where opt-in is required, visitors from a partner link or
+// one of our Meta ads are asked. The footer's dialog also holds the app's
+// analytics choice (one shared cookie).
 export function PrivacyChoices() {
-  const [saved, setSaved] = React.useState<Choices | null>(null);
+  const [saved, setSaved] =
+    React.useState<ReturnType<typeof readPrivacyCookie>>(null);
   const [optIn, setOptIn] = React.useState<boolean | null>(null);
-  const [view, setView] = React.useState<"none" | "partner" | "dialog">("none");
+  const [view, setView] = React.useState<"none" | "partner" | "ad" | "dialog">(
+    "none",
+  );
 
   React.useEffect(() => {
     const savedChoices = readPrivacyCookie(document.cookie);
     setSaved(savedChoices);
-    if (isPartnerVisit() && !hasGlobalPrivacyControl()) {
-      if (savedChoices) {
-        if (savedChoices.ads) loadReferralAttribution();
-      } else {
+    if (!hasGlobalPrivacyControl()) {
+      if (isPartnerVisit()) {
+        if (savedChoices) {
+          if (savedChoices.referrals) loadReferralAttribution();
+        } else {
+          void fetchOptIn().then((required) => {
+            setOptIn(required);
+            if (required) setView("partner");
+            else loadReferralAttribution();
+          });
+        }
+      }
+      // Without a saved Meta choice, /js/meta.js applies the region default
+      // itself. Only an ad visit, which gets the prompt where opt-in is
+      // required, looks up the region here.
+      if (
+        savedChoices?.advertising === undefined &&
+        isMetaAdVisit() &&
+        !isPartnerVisit()
+      ) {
         void fetchOptIn().then((required) => {
           setOptIn(required);
-          if (required) setView("partner");
-          else loadReferralAttribution();
+          if (required) setView("ad");
+          else loadMetaPixel();
         });
+      } else if (savedChoices?.advertising !== false) {
+        loadMetaPixel();
       }
     }
 
@@ -40,15 +63,16 @@ export function PrivacyChoices() {
     return () => window.removeEventListener(OPEN_PRIVACY_CHOICES_EVENT, open);
   }, []);
 
-  // The dialog shows location-based defaults to visitors who haven't chosen.
+  // The dialog shows region defaults for choices the visitor hasn't made.
+  const needsRegion = saved?.advertising === undefined;
   React.useEffect(() => {
-    if (view === "dialog" && saved === null && optIn === null) {
+    if (view === "dialog" && needsRegion && optIn === null) {
       void fetchOptIn().then(setOptIn);
     }
-  }, [view, saved, optIn]);
+  }, [view, needsRegion, optIn]);
 
   const choices =
-    saved || optIn !== null
+    !needsRegion || optIn !== null
       ? effectivePrivacyChoices({
           saved,
           optIn: optIn ?? false,
@@ -57,34 +81,37 @@ export function PrivacyChoices() {
       : null;
 
   function save(next: Choices) {
-    // A loaded referral script can't be unloaded; a reload stops it.
-    const stopReferrals =
-      !next.ads && document.querySelector("script[data-openseo-dub]") !== null;
+    // A loaded script can't be unloaded; a reload stops it.
+    const stopScripts =
+      (!next.referrals &&
+        document.querySelector("script[data-openseo-dub]") !== null) ||
+      (!next.advertising &&
+        document.querySelector("script[data-openseo-meta]") !== null);
     savePrivacyChoices(next);
     setSaved(next);
     setView("none");
-    if (next.ads) loadReferralAttribution();
-    if (stopReferrals) location.reload();
+    if (next.advertising) loadMetaPixel();
+    if (next.referrals) loadReferralAttribution();
+    if (stopScripts) location.reload();
   }
 
   if (!choices || view === "none") return null;
 
   if (view === "partner") {
     return (
-      <Panel className="max-w-sm">
-        <p>
-          You came from a partner&apos;s link. Can we keep a 90-day cookie (Dub)
-          so they get credit if you sign up?
-        </p>
-        <div className="mt-3 flex justify-end gap-2">
-          <PanelButton onClick={() => save({ ...choices, ads: false })}>
-            No thanks
-          </PanelButton>
-          <PanelButton onClick={() => save({ ...choices, ads: true })}>
-            Allow
-          </PanelButton>
-        </div>
-      </Panel>
+      <Prompt onAnswer={(referrals) => save({ ...choices, referrals })}>
+        You came from a partner&apos;s link. Can we keep a 90-day cookie (Dub)
+        so they get credit if you sign up?
+      </Prompt>
+    );
+  }
+
+  if (view === "ad") {
+    return (
+      <Prompt onAnswer={(advertising) => save({ ...choices, advertising })}>
+        You came from one of our ads on Facebook or Instagram. Can Meta measure
+        whether it led to a sign-up?
+      </Prompt>
     );
   }
 
@@ -145,9 +172,20 @@ function ChoicesForm({
               ? "Off because your browser sends Global Privacy Control."
               : "A 90-day cookie that credits the partner who sent you (Dub)."
           }
-          checked={draft.ads && !gpc}
+          checked={draft.referrals && !gpc}
           disabled={gpc}
-          onChange={(ads) => setDraft({ ...draft, ads })}
+          onChange={(referrals) => setDraft({ ...draft, referrals })}
+        />
+        <ChoiceRow
+          label="Advertising"
+          description={
+            gpc
+              ? "Off because your browser sends Global Privacy Control."
+              : "Lets Meta measure which of our ads lead to sign-ups (Meta Pixel)."
+          }
+          checked={draft.advertising && !gpc}
+          disabled={gpc}
+          onChange={(advertising) => setDraft({ ...draft, advertising })}
         />
       </div>
       <div className="mt-4 flex justify-end gap-2">
@@ -198,8 +236,25 @@ function Panel(props: { className: string; children: React.ReactNode }) {
   );
 }
 
-// The partner prompt's two answers share one style, so declining is as easy
-// as agreeing. The dialog's Save is only slightly stronger.
+function Prompt(props: {
+  children: React.ReactNode;
+  onAnswer: (allow: boolean) => void;
+}) {
+  return (
+    <Panel className="max-w-sm">
+      <p>{props.children}</p>
+      <div className="mt-3 flex justify-end gap-2">
+        <PanelButton onClick={() => props.onAnswer(false)}>
+          No thanks
+        </PanelButton>
+        <PanelButton onClick={() => props.onAnswer(true)}>Allow</PanelButton>
+      </div>
+    </Panel>
+  );
+}
+
+// A prompt's two answers share one style, so declining is as easy as
+// agreeing. The dialog's Save is only slightly stronger.
 function PanelButton(props: {
   children: React.ReactNode;
   onClick?: () => void;
@@ -240,6 +295,15 @@ const isPartnerVisit = () => {
   return params.has("dub_id") || params.has("via");
 };
 
+// A click on one of our Facebook or Instagram ads: Meta adds ?fbclid=, and
+// the ads' UTM tags name the platform.
+const META_AD_SOURCES = new Set(["facebook", "instagram", "meta", "fb", "ig"]);
+const isMetaAdVisit = () => {
+  const params = new URLSearchParams(location.search);
+  const source = params.get("utm_source")?.toLowerCase() ?? "";
+  return params.has("fbclid") || META_AD_SOURCES.has(source);
+};
+
 // Opt-in is required in the EEA, UK, Switzerland and unknown locations
 // (Cloudflare's CF-IPCountry, read by /api/privacy-region). The page is
 // prerendered, so the browser asks. A failed lookup counts as opt-in.
@@ -250,6 +314,23 @@ async function fetchOptIn(): Promise<boolean> {
   } catch {
     return true;
   }
+}
+
+// The Meta Pixel, served first-party by routes/js/meta[.]js.ts. Its `_fbp` and
+// `_fbc` cookies on `.openseo.so` let the app attribute a signup to an ad.
+function loadMetaPixel() {
+  if (document.querySelector("script[data-openseo-meta]")) return;
+  const script = document.createElement("script");
+  script.async = true;
+  script.src = "/js/meta.js";
+  script.dataset.openseoMeta = "";
+  // The route serves an empty script where the pixel isn't allowed. Dropping
+  // that tag keeps a save from reloading the page to stop a pixel that never
+  // ran, and lets an Allow on this page request the pixel again.
+  script.onload = () => {
+    if (!("fbq" in window)) script.remove();
+  };
+  document.head.appendChild(script);
 }
 
 // Dub partner links land here with ?dub_id= (and ?via=). Dub's script stores

@@ -1049,6 +1049,7 @@ body:has(.itc-campaign) {
   display: flex;
   gap: 20px;
 }
-.itc-campaign-footer a:hover {
+.itc-campaign-footer a:hover,
+.itc-campaign-footer button:hover {
   color: var(--ink);
 }

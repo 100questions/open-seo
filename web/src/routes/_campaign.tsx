@@ -1,6 +1,7 @@
 import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { SIGNUP_URL } from "@/components/landing-page";
+import { PrivacyChoicesLink } from "@/components/privacy-choices";
 
 /**
  * Layout for paid-traffic landing pages. No site navigation: the only ways
@@ -55,6 +56,9 @@ function CampaignLayout() {
           <nav aria-label="Legal">
             <a href="/privacy">Privacy</a>
             <a href="/terms-and-conditions">Terms</a>
+            {/* Ads land here, and the pixel can load here, so the opt-out
+                must be reachable without the site footer. */}
+            <PrivacyChoicesLink />
           </nav>
         </div>
       </footer>
