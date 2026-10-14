@@ -59,8 +59,7 @@ export function TermsAgreementNotice({ action }: { action: string }) {
       >
         Privacy Policy
       </a>
-      . We may record masked session replays in the app to fix bugs; you can
-      turn this off in Settings.
+      .
     </p>
   );
 }
