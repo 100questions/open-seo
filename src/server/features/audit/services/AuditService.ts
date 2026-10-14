@@ -28,6 +28,7 @@ import {
   type LighthouseStrategy,
 } from "@/server/lib/audit/types";
 import {
+  isShopifyHost,
   normalizeAndValidateStartUrl,
   resolveStartUrlRedirects,
 } from "@/server/lib/audit/url-policy";
@@ -109,10 +110,13 @@ async function startAudit(input: {
     lighthouseStrategy,
     renderJavaScript,
     // Shopify storefronts answer with `powered-by: Shopify`; knowing this is
-    // what lets the report explain a throttled crawl instead of shrugging. A
-    // throttled probe sees no header, but a saved signature is always Shopify's.
+    // what lets a rendered crawl read throttled pages and the report explain
+    // an unrendered one. A throttled probe sees no header, but a saved
+    // signature is always Shopify's, and so is a host in Shopify's range.
     sitePlatform:
-      credential || probe.poweredBy?.toLowerCase().includes("shopify")
+      credential ||
+      probe.poweredBy?.toLowerCase().includes("shopify") ||
+      (await isShopifyHost(startHost))
         ? "shopify"
         : undefined,
     crawlerCredentialId: credential?.id,
