@@ -39,8 +39,7 @@ export function TermsUpdateBanner() {
           <a href={PRIVACY_URL} target="_blank" rel="noreferrer">
             Privacy Policy
           </a>{" "}
-          (effective {CURRENT_TERMS_EFFECTIVE_DATE}), including how we use
-          masked session replay to fix bugs. Please review and accept.
+          (effective {CURRENT_TERMS_EFFECTIVE_DATE}). Please review and accept.
         </span>
         <Button
           size="sm"
