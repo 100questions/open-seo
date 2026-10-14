@@ -111,7 +111,6 @@ export const createRankTrackerTool = {
         organizationId: context.auth.organizationId,
         properties: {
           project_id: args.projectId,
-          domain: config.domain,
           devices: config.devices,
           schedule: config.scheduleInterval,
           source: "mcp",

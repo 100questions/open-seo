@@ -112,7 +112,7 @@ export const setGscSite = createServerFn({ method: "POST" })
         distinctId: context.userId,
         event: "gsc:property_select",
         organizationId: context.organizationId,
-        properties: { project_id: context.projectId, site_url: data.siteUrl },
+        properties: { project_id: context.projectId },
       }),
     );
     return {

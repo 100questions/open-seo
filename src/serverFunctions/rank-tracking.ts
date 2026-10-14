@@ -104,7 +104,6 @@ export const createRankTrackingConfig = createServerFn({ method: "POST" })
         organizationId: context.organizationId,
         properties: {
           project_id: context.projectId,
-          domain: data.domain,
           devices: data.devices ?? "both",
           schedule: data.scheduleInterval ?? "weekly",
         },

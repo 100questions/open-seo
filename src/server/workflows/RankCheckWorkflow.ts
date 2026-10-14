@@ -280,7 +280,9 @@ async function markRankCheckRunFailed(input: {
     properties: {
       project_id: input.projectId,
       status: "failed",
-      error: errorMessage,
+      // A code, not the message: provider errors can quote keywords or domains.
+      error_code:
+        input.error instanceof AppError ? input.error.code : "INTERNAL_ERROR",
     },
   });
 }

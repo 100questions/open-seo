@@ -1,7 +1,6 @@
 import { isHostedClientAuthMode } from "@/lib/auth-mode";
 import {
-  POSTHOG_PERSONAL_DATA_QUERY_PARAMETERS,
-  sanitizePostHogProperties,
+  sanitizePostHogEvent,
   sanitizePostHogUrl,
 } from "@/client/lib/posthog-sanitize";
 
@@ -84,32 +83,50 @@ function getBrowserPostHogClient(): Promise<BrowserPostHogClient | null> {
           defaults: "2026-01-30",
           capture_exceptions: true,
           before_send(event) {
+            if (!event) return null;
             if (
-              event?.event === "$exception" &&
+              event.event === "$exception" &&
               isIgnorableException(event.properties)
             ) {
               return null;
             }
-            return event;
+            return sanitizePostHogEvent(event);
           },
           capture_pageview: "history_change",
+          // Autocaptured clicks carry no on-screen text or element attributes.
+          mask_all_text: true,
+          mask_all_element_attributes: true,
           mask_personal_data_properties: true,
-          custom_personal_data_properties: [
-            ...POSTHOG_PERSONAL_DATA_QUERY_PARAMETERS,
-          ],
           respect_dnt: true,
+          // Console output can quote page content and full error messages,
+          // and the project setting would otherwise record it in replays.
+          enable_recording_console_log: false,
+          // Recordings mask all text and inputs: app screens show customer
+          // content (keywords, domains, GSC/GA data, reports, chat messages).
           session_recording: {
             maskAllInputs: true,
-            maskTextSelector: "[data-ph-mask], .ph-mask",
+            maskTextSelector: "*",
+            // Text masking doesn't cover attributes, and the recorder has no
+            // attribute masker. These elements carry content in attributes
+            // (keyword links, customer URLs, favicons, prompt and URL titles
+            // and labels), so they are recorded as blank boxes.
+            blockSelector:
+              'a[href^="http"], a[href*="?"], img, [title], [aria-label]',
+            recordHeaders: false,
+            recordBody: false,
+            // Runs on page URLs and network entries. Project settings can turn
+            // payload capture on remotely, so headers and bodies are dropped
+            // here too.
             maskCapturedNetworkRequestFn(request) {
               return {
                 ...request,
                 name: sanitizePostHogUrl(request.name),
+                requestHeaders: undefined,
+                requestBody: undefined,
+                responseHeaders: undefined,
+                responseBody: undefined,
               };
             },
-          },
-          sanitize_properties(properties) {
-            return sanitizePostHogProperties(properties);
           },
         });
         browserPostHogInitialized = true;
