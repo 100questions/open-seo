@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   effectivePrivacyChoices,
+  productUpdatesOnByDefault,
   readPrivacyCookie,
   requiresOptIn,
 } from "./privacy-choices";
@@ -13,6 +14,13 @@ describe("privacy choices", () => {
     expect(requiresOptIn("XX")).toBe(true);
     expect(requiresOptIn("T1")).toBe(true);
     expect(requiresOptIn("US")).toBe(false);
+  });
+
+  it("starts product-update emails on only outside opt-in regions and Canada", () => {
+    expect(productUpdatesOnByDefault("US")).toBe(true);
+    expect(productUpdatesOnByDefault("DE")).toBe(false);
+    expect(productUpdatesOnByDefault("CA")).toBe(false);
+    expect(productUpdatesOnByDefault(null)).toBe(false);
   });
 
   it("keeps optional tracking off until an opt-in visitor chooses", () => {

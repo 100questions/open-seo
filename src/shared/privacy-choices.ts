@@ -35,6 +35,16 @@ export function requiresOptIn(country: string | null | undefined): boolean {
   return OPT_IN_COUNTRIES.has(country.toUpperCase());
 }
 
+/** Whether a new account starts with product-update emails on. Every email
+ *  carries an unsubscribe link, which is enough in opt-out regions like the
+ *  US. Off where tracking needs opt-in, and in Canada, whose anti-spam law
+ *  doesn't accept a pre-ticked box as consent. */
+export function productUpdatesOnByDefault(
+  country: string | null | undefined,
+): boolean {
+  return !requiresOptIn(country) && country?.toUpperCase() !== "CA";
+}
+
 export function defaultPrivacyChoices(optIn: boolean): PrivacyChoices {
   return { analytics: !optIn, ads: !optIn };
 }

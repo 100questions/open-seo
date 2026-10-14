@@ -1,13 +1,21 @@
+import { useMutation } from "@tanstack/react-query";
+import * as React from "react";
+import { toast } from "sonner";
 import { Button } from "@/client/components/ui/button";
+import { Switch } from "@/client/components/ui/switch";
 import {
   updatePrivacyChoices,
   usePrivacyChoices,
 } from "@/client/components/PrivacyChoices";
 import { WizardFooter } from "@/client/features/onboarding/WizardFooter";
+import { useSession } from "@/lib/auth-client";
+import { setProductUpdatesOptIn } from "@/serverFunctions/product-updates";
+import type { PrivacyChoices } from "@/shared/privacy-choices";
+import { PRIVACY_URL } from "@/shared/terms";
 
-/** Last onboarding step on the hosted app: one yes-or-no question about usage
- *  analytics, with equal buttons. Either answer finishes onboarding. Until it
- *  is answered, the region default applies (on in the US, off in the EU). */
+/** Last onboarding step on the hosted app: usage analytics and product-update
+ *  emails. Each switch starts from the current choice, which is the region
+ *  default until the user picks. Finish saves both. */
 export function AnalyticsOnboardingStep({
   onBack,
   onFinish,
@@ -16,22 +24,51 @@ export function AnalyticsOnboardingStep({
   onFinish: () => void;
 }) {
   const choices = usePrivacyChoices();
-  const answer = (analytics: boolean) => {
-    if (choices) void updatePrivacyChoices({ ...choices, analytics }, true);
-    onFinish();
-  };
+  const { data: session, refetch } = useSession();
+  // Unset until the user flips a switch.
+  const [analytics, setAnalytics] = React.useState<boolean>();
+  const [productUpdates, setProductUpdates] = React.useState<boolean>();
+
+  const finish = useMutation({
+    // The email choice is only sent when the switch was flipped: signup
+    // already applied the region default.
+    mutationFn: async (next: {
+      privacy: PrivacyChoices;
+      productUpdates: boolean | undefined;
+    }) => {
+      await Promise.all([
+        updatePrivacyChoices(next.privacy, true),
+        next.productUpdates === undefined
+          ? null
+          : setProductUpdatesOptIn({ data: { optIn: next.productUpdates } }),
+      ]);
+      // The session is served from a signed cookie cache, so bypass it for
+      // Settings to show the saved email choice.
+      await refetch({ query: { disableCookieCache: true } });
+    },
+    // A failed email sync shouldn't trap anyone in onboarding.
+    onError: () =>
+      toast.error(
+        "We couldn't save your email choice. You can change it in Settings.",
+      ),
+    onSettled: onFinish,
+  });
+
+  if (!choices) return null;
+  const analyticsOn = analytics ?? choices.analytics;
+  const productUpdatesOn =
+    productUpdates ?? session?.user.productUpdatesOptIn === true;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">
           Help make OpenSEO better
         </h1>
         <p className="mt-3 text-sm text-muted-foreground">
-          Share usage analytics and session replays to help improve OpenSEO. See
-          our{" "}
+          You can change these anytime in Settings. See our{" "}
           <a
-            href="https://openseo.so/privacy"
+            href={PRIVACY_URL}
             target="_blank"
             rel="noreferrer"
             className="text-foreground underline underline-offset-2"
@@ -41,17 +78,48 @@ export function AnalyticsOnboardingStep({
           .
         </p>
       </div>
+      <div className="flex items-start justify-between gap-6">
+        <div>
+          <p className="text-sm">Usage analytics</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Share usage analytics and session replays to help improve OpenSEO.
+          </p>
+        </div>
+        <Switch
+          checked={analyticsOn}
+          onCheckedChange={setAnalytics}
+          aria-label="Share usage analytics"
+        />
+      </div>
+      <div className="flex items-start justify-between gap-6">
+        <div>
+          <p className="text-sm">Product updates</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Occasional emails about new features and tips. Unsubscribe anytime.
+          </p>
+        </div>
+        <Switch
+          checked={productUpdatesOn}
+          onCheckedChange={setProductUpdates}
+          aria-label="Get product update emails"
+        />
+      </div>
       <WizardFooter
         onBack={onBack}
         continueAction={
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => answer(false)}>
-              No thanks
-            </Button>
-            <Button variant="outline" onClick={() => answer(true)}>
-              Share analytics
-            </Button>
-          </div>
+          <Button
+            type="button"
+            className="font-semibold"
+            pending={finish.isPending}
+            onClick={() =>
+              finish.mutate({
+                privacy: { ...choices, analytics: analyticsOn },
+                productUpdates,
+              })
+            }
+          >
+            Finish
+          </Button>
         }
       />
     </div>

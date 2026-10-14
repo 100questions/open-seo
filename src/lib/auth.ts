@@ -25,6 +25,7 @@ import { AuthRepository } from "@/server/auth/repositories/AuthRepository";
 import { captureDubReferralSignup } from "@/server/referrals/dub";
 import {
   effectivePrivacyChoices,
+  productUpdatesOnByDefault,
   readPrivacyCookie,
   requiresOptIn,
 } from "@/shared/privacy-choices";
@@ -242,14 +243,19 @@ function createAuth() {
             // this browser, so server-side analytics doesn't run for a
             // visitor who hasn't opted in where opt-in is required.
             const choices = signupPrivacyChoices(ctx?.request);
+            const now = new Date();
             // Every hosted signup path (email form, Google on the sign-up or
             // sign-in page) shows the Terms clickwrap next to its button.
             return {
               data: {
                 ...user,
                 analyticsOptedOut: !choices.analytics,
+                productUpdatesOptIn: productUpdatesOnByDefault(
+                  ctx?.request?.headers.get("cf-ipcountry"),
+                ),
+                productUpdatesChangedAt: now,
                 termsAcceptedVersion: CURRENT_TERMS_VERSION,
-                termsAcceptedAt: new Date(),
+                termsAcceptedAt: now,
               },
             };
           },
@@ -303,12 +309,14 @@ async function syncHostedSignupContact(user: {
   id: string;
   email: string;
   name?: string | null;
+  productUpdatesOptIn?: unknown;
 }) {
   try {
     await upsertHostedSignupContact({
       userId: user.id,
       email: user.email,
       name: user.name,
+      productUpdates: user.productUpdatesOptIn === true,
     });
   } catch (error) {
     console.error("Failed to sync Loops profile after user creation:", {

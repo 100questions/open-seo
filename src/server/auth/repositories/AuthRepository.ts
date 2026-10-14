@@ -301,6 +301,17 @@ async function setTermsAcceptance(
     .where(eq(authUser.id, userId));
 }
 
+async function setProductUpdatesOptIn(
+  userId: string,
+  optIn: boolean,
+  changedAt: Date,
+) {
+  await db
+    .update(authUser)
+    .set({ productUpdatesOptIn: optIn, productUpdatesChangedAt: changedAt })
+    .where(eq(authUser.id, userId));
+}
+
 export const AuthRepository = {
   upsertDelegatedOrganization,
   findFirstOrganizationIdForUser,
@@ -313,6 +324,7 @@ export const AuthRepository = {
   getLastActiveOrganizationId,
   setLastActiveOrganization,
   setTermsAcceptance,
+  setProductUpdatesOptIn,
   getHostedUser,
   getHostedUserNames,
   hasPendingInvitationForEmail,

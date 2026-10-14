@@ -42,7 +42,7 @@ export function PostSignupOnboarding({
           "Website",
           "Google Search Console",
           "Agent setup",
-          ...(askAnalytics ? ["Analytics"] : []),
+          ...(askAnalytics ? ["Preferences"] : []),
         ]}
         onStepChange={onStepChange}
         disabled={isSaving}

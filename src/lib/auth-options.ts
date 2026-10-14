@@ -19,6 +19,20 @@ export const userAdditionalFields = {
     required: false as const,
     input: false as const,
   },
+  // Product-update emails, hosted only. Set by the server only: the region
+  // default at signup, then setProductUpdatesOptIn, which also updates the
+  // Loops list. Null on accounts that predate the choice, which reads as off.
+  productUpdatesOptIn: {
+    type: "boolean" as const,
+    required: false as const,
+    input: false as const,
+  },
+  // When that choice was last set: the record of consent.
+  productUpdatesChangedAt: {
+    type: "date" as const,
+    required: false as const,
+    input: false as const,
+  },
 };
 
 export const baseAuthOptions = {
