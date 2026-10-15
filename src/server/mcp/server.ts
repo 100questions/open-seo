@@ -193,7 +193,7 @@ export function createOpenSeoMcpServer(authProps: McpProps) {
       // Without the pre-declaration, registerTool defaults it to true.
       capabilities: { tools: { listChanged: false } },
       instructions:
-        "OpenSEO research tools use credits. Proceed with normal focused research, but ask the user for confirmation before planned batches over 2,000 credits. OpenSEO cannot purchase credits or charge cards. Explain unsupported purchase requests without promoting subscriptions, upgrades or credit purchases, or directing users to checkout.",
+        "OpenSEO research tools use credits. Proceed with normal focused research, but ask the user for confirmation before planned batches over 2,000 credits. OpenSEO cannot purchase credits or charge cards. Explain unsupported purchase requests without promoting subscriptions, upgrades or credit purchases. When a tool reports that the organization is out of credits, you may share the billing link from that error as a plain link.",
     },
   );
 
