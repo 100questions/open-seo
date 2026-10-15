@@ -100,27 +100,12 @@ export class SiteAuditWorkflow extends WorkflowEntrypoint<Env, AuditParams> {
       });
     } catch (error) {
       console.error(`Audit ${auditId} failed:`, error);
-      // Workflow entrypoints run outside the server-function middleware, so
-      // nothing else forwards this throw to PostHog as a $exception. Capture it
-      // here (awaited — Workflows have no ctx.waitUntil) before re-throwing.
       // Deploy-time resets are expected churn, not actionable errors.
       const isDeployReset =
         error instanceof Error &&
         error.message.includes(
           "Durable Object reset because its code was updated",
         );
-      if (!isDeployReset) {
-        await captureServerError(
-          error,
-          {
-            source: "site_audit_workflow",
-            audit_id: auditId,
-            organization_id: billingCustomer.organizationId,
-            project_id: projectId,
-          },
-          billingCustomer.userId,
-        );
-      }
       const errorInfo = classifyAuditError(error);
       await pgStep(step, "mark-failed", DB_STEP, async () => {
         // Read the phase before failAudit stamps currentPhase = "failed".
@@ -128,10 +113,31 @@ export class SiteAuditWorkflow extends WorkflowEntrypoint<Env, AuditParams> {
           auditId,
           event.instanceId,
         );
+        // A completed audit (e.g. cleanup failed after finalize) stays
+        // completed, so it gets no failure telemetry either.
+        if (runningAudit?.status !== "running") return;
         await AuditRepository.failAudit(auditId, event.instanceId, {
           ...errorInfo,
           failedPhase: runningAudit?.currentPhase ?? null,
         });
+
+        // Workflow entrypoints run outside the server-function middleware, so
+        // nothing else forwards this throw to PostHog as a $exception. Captured
+        // inside this step: when Cloudflare loses the invocation (internal
+        // workflow errors, evicted Durable Objects), the step never runs and the
+        // engine replays the audit, which usually completes.
+        if (!isDeployReset) {
+          await captureServerError(
+            error,
+            {
+              source: "site_audit_workflow",
+              audit_id: auditId,
+              organization_id: billingCustomer.organizationId,
+              project_id: projectId,
+            },
+            billingCustomer.userId,
+          );
+        }
 
         await captureServerEvent({
           distinctId: billingCustomer.userId,
