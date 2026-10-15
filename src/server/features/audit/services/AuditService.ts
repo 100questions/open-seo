@@ -1,3 +1,4 @@
+import { markOnboardingMilestone } from "@/server/email/onboarding-drip";
 import { isAuditRenderingAllowed } from "@/server/lib/audit/rendering-policy";
 import {
   lockRenderingCredits,
@@ -191,6 +192,7 @@ async function startAudit(input: {
     throw error;
   }
 
+  await markOnboardingMilestone(input.billingCustomer, "auditStarted");
   return { auditId };
 }
 

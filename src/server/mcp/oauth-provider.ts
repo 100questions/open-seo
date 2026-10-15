@@ -16,6 +16,7 @@ import {
 } from "@/lib/oauth-resource";
 import { asAppError } from "@/server/lib/errors";
 import { recordMcpAuthorized } from "@/server/features/activation/mcpActivation";
+import { markOnboardingMilestone } from "@/server/email/onboarding-drip";
 import { captureServerEvent } from "@/server/lib/posthog";
 import {
   createWorkersOAuthMcpProps,
@@ -356,6 +357,7 @@ async function handleOAuthConsentResponse(
   });
 
   await recordMcpAuthorized(context.organizationId);
+  await markOnboardingMilestone(context, "mcpConnected");
 
   waitUntil(
     captureServerEvent({

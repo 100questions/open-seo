@@ -30,6 +30,9 @@ vi.mock("@/server/lib/runtime-env", () => ({
   isHostedServerAuthMode: vi.fn().mockResolvedValue(false),
   getOptionalEnvValue: vi.fn().mockResolvedValue(SECRET),
 }));
+vi.mock("@/server/email/onboarding-drip", () => ({
+  markOnboardingMilestone: vi.fn(),
+}));
 vi.mock("@/server/billing/subscription", () => ({
   customerHasManagedAccess: vi.fn(),
   customerHasPaidPlan: vi.fn(),

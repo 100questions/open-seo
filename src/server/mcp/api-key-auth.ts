@@ -4,6 +4,7 @@ import { MCP_OAUTH_SCOPES } from "@/lib/oauth-resource";
 import { resolveExistingActiveHostedOrganization } from "@/server/auth/default-hosted-organization";
 import { AuthRepository } from "@/server/auth/repositories/AuthRepository";
 import { recordMcpAuthorized } from "@/server/features/activation/mcpActivation";
+import { markOnboardingMilestone } from "@/server/email/onboarding-drip";
 import { createWorkersOAuthMcpProps, MCP_ROUTE } from "@/server/mcp/context";
 
 function getApiKey(request: Request) {
@@ -154,6 +155,10 @@ export async function handleMcpApiKeyRequest(
     });
 
     await recordMcpAuthorized(organizationId);
+    await markOnboardingMilestone(
+      { userId, userEmail: user.email },
+      "mcpConnected",
+    );
 
     const { handleAuthenticatedOpenSeoMcpRequest } =
       await import("@/server/mcp/transport");

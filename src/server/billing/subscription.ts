@@ -11,6 +11,7 @@ import {
 import type { CreditFeature } from "@/shared/billing-credit-features";
 import { autumn, AUTUMN_TRACK_RETRY_OPTIONS } from "@/server/billing/autumn";
 import { captureServerEvent } from "@/server/lib/posthog";
+import { sendCreditsExhaustedEvent } from "@/server/email/onboarding-drip";
 import { AppError } from "@/server/lib/errors";
 
 export type BillingCustomerContext = Pick<
@@ -201,6 +202,7 @@ export async function checkUsageCreditsDepleted(
       topup_remaining: confirmed.topupRemaining,
     },
   });
+  await sendCreditsExhaustedEvent(customer);
   return { depleted: true, monthlyRemaining: check.monthlyRemaining };
 }
 
