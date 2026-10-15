@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { onboardingAnswersQueryOptions } from "@/client/features/onboarding/onboardingModel";
 import { useSession } from "@/lib/auth-client";
+import { getCurrentAuthRedirectFromHref } from "@/lib/auth-redirect";
 import {
   isEmailVerificationBypassed,
   isHostedClientAuthMode,
@@ -32,7 +33,14 @@ export function useOnboardingRedirect() {
       return;
     }
 
-    void navigate({ to: "/onboarding", search: { step: 0 }, replace: true });
+    // Remember the page the user asked for, so a deep link (a project page,
+    // say) still lands there after onboarding.
+    const redirect = getCurrentAuthRedirectFromHref(window.location.href);
+    void navigate({
+      to: "/onboarding",
+      search: { step: 0, redirect: redirect === "/" ? undefined : redirect },
+      replace: true,
+    });
   }, [
     isHostedMode,
     navigate,

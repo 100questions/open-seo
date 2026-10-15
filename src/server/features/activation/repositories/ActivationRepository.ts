@@ -6,6 +6,7 @@ import {
   invitation,
   organizationActivationState,
   projectActivationState,
+  userOnboardingAnswers,
 } from "@/db/schema";
 
 import type {
@@ -64,6 +65,27 @@ async function recordFirstMcpToolCall(organizationId: string): Promise<void> {
       target: organizationActivationState.organizationId,
       set: {
         firstMcpToolCallAt: sql`coalesce(${organizationActivationState.firstMcpToolCallAt}, ${now})`,
+        updatedAt: now,
+      },
+    });
+}
+
+// An agent that creates a project through MCP has done the wizard's main job,
+// so the app stops sending the user to onboarding. COALESCE keeps an earlier
+// completion. The Search Console nudge stays pending: the user never saw that
+// step.
+async function markOnboardingCompleted(
+  userId: string,
+  organizationId: string,
+): Promise<void> {
+  const now = new Date().toISOString();
+  await db
+    .insert(userOnboardingAnswers)
+    .values({ userId, organizationId, completedAt: now, updatedAt: now })
+    .onConflictDoUpdate({
+      target: userOnboardingAnswers.userId,
+      set: {
+        completedAt: sql`coalesce(${userOnboardingAnswers.completedAt}, ${now})`,
         updatedAt: now,
       },
     });
@@ -179,6 +201,7 @@ export const ActivationRepository = {
   getProjectActivation,
   recordFirstMcpAuthorized,
   recordFirstMcpToolCall,
+  markOnboardingCompleted,
   markStepClicked,
   markGa4CardDismissed,
 };
