@@ -56,9 +56,9 @@ export async function sendCreditsExhaustedEvent(
   );
 }
 
-// Some callers are hot paths (every API-key MCP request, every request
-// refused for credits), and Loops rate-limits the whole team, transactional
-// emails included. So each isolate sends each update once.
+// Some callers are hot paths (every request refused for credits), and Loops
+// rate-limits the whole team, transactional emails included. So each isolate
+// sends each update once.
 const sentKeys = new Set<string>();
 
 async function sendOnce(

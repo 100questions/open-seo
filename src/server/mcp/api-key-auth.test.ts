@@ -37,9 +37,6 @@ vi.mock("@/server/features/activation/mcpActivation", () => ({
   recordMcpAuthorized: mocks.recordMcpAuthorized,
 }));
 
-vi.mock("@/server/email/onboarding-drip", () => ({
-  markOnboardingMilestone: vi.fn(),
-}));
 vi.mock("@/server/mcp/transport", () => ({
   handleAuthenticatedOpenSeoMcpRequest:
     mocks.handleAuthenticatedOpenSeoMcpRequest,

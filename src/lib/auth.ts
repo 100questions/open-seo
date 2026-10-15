@@ -1,6 +1,6 @@
 import { env } from "cloudflare:workers";
 import { betterAuth } from "better-auth";
-import { APIError } from "better-auth/api";
+import { APIError, createAuthMiddleware } from "better-auth/api";
 import { captcha } from "better-auth/plugins";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
@@ -28,6 +28,7 @@ import {
   productUpdatesOnByDefault,
   requestPrivacyChoices,
 } from "@/shared/privacy-choices";
+import { markOnboardingMilestone } from "@/server/email/onboarding-drip";
 import {
   sendHostedPasswordResetEmail,
   sendHostedVerificationEmail,
@@ -44,6 +45,8 @@ const hostedBaseUrlSchema = z
       (url.protocol === "http:" && url.hostname === "localhost")
     );
   }, "BETTER_AUTH_URL must use https or localhost");
+
+const createdApiKeySchema = z.object({ referenceId: z.string() });
 
 function createAuth() {
   // Hosted needs the real configured URL (cookies, callbacks, /api/auth routes
@@ -213,6 +216,25 @@ function createAuth() {
         : []),
       tanstackStartCookies(),
     ],
+    hooks: {
+      // Marked when the user creates an MCP API key, the API-key counterpart
+      // of OAuth's authorize step. Not on each /mcp request: isolates share no
+      // memory, so every one would re-send it and hit Loops' team-wide rate
+      // limit.
+      after: createAuthMiddleware(async (ctx) => {
+        if (ctx.path !== "/api-key/create") return;
+        const created = createdApiKeySchema.safeParse(ctx.context.returned);
+        if (!created.success) return;
+        const user = await AuthRepository.getHostedUser(
+          created.data.referenceId,
+        );
+        if (!user) return;
+        await markOnboardingMilestone(
+          { userId: user.id, userEmail: user.email },
+          "mcpConnected",
+        );
+      }),
+    },
     databaseHooks: {
       user: {
         create: {
