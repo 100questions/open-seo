@@ -214,7 +214,8 @@ export const keywordMetrics = pgTable(
 // Rank Tracking tables
 // ============================================================================
 
-// One configuration per project+domain — defines what domain to track and how
+// One configuration per project+domain+location+language — defines what domain
+// to track and how
 export const rankTrackingConfigs = pgTable(
   "rank_tracking_configs",
   {
@@ -250,10 +251,16 @@ export const rankTrackingConfigs = pgTable(
       table.createdAt,
     ),
     uniqueIndex("rank_tracking_configs_national_idx")
-      .on(table.projectId, table.domain, table.locationCode)
+      .on(table.projectId, table.domain, table.locationCode, table.languageCode)
       .where(sql`${table.locationName} IS NULL`),
     uniqueIndex("rank_tracking_configs_local_idx")
-      .on(table.projectId, table.domain, table.locationCode, table.locationName)
+      .on(
+        table.projectId,
+        table.domain,
+        table.locationCode,
+        table.languageCode,
+        table.locationName,
+      )
       .where(sql`${table.locationName} IS NOT NULL`),
   ],
 );
