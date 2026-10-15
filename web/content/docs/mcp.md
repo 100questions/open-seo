@@ -21,7 +21,7 @@ No account yet? Try the [free SEO tools](/tools).
 
 ## ChatGPT web and desktop
 
-Follow the [ChatGPT setup guide](/docs/chatgpt). The custom ChatGPT connection works on Free and paid plans. Workspace permissions can limit access. Pasting the setup prompt into ChatGPT gives you the same manual steps.
+Install the [OpenSEO plugin for ChatGPT](https://chatgpt.com/plugins/plugin_asdk_app_6abddd2c7e4c819191f1398c4bd8e9b3). It adds MCP and the SEO skills together. If the plugin isn't available for your account, or you self-host OpenSEO, add a [custom connection](/docs/chatgpt#custom-connection) instead. The [ChatGPT setup guide](/docs/chatgpt) covers both.
 
 ## Claude Code
 
