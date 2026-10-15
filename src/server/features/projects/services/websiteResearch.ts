@@ -110,7 +110,7 @@ export async function researchWebsite(
   // Each field is independent: saved context supplies the evidence, and the
   // model only receives output fields and tools for the missing information.
   const spend: ResearchSpend[] = [];
-  // Throttled Shopify pages are read through Context, billed with the research.
+  // Pages the plain fetch can't read go through Context, billed with the research.
   const contextUsage: RenderUsage = {
     cloudflareAttempts: 0,
     contextCredits: 0,

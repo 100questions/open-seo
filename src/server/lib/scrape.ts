@@ -5,10 +5,7 @@
 // gracefully (less text); a Browser Rendering upgrade can slot in behind this
 // same interface later.
 
-import {
-  isShopifyHost,
-  normalizeAndValidateStartUrl,
-} from "@/server/lib/audit/url-policy";
+import { normalizeAndValidateStartUrl } from "@/server/lib/audit/url-policy";
 import { RenderedPageService } from "@/server/lib/audit/rendered-page";
 import { getOptionalEnvValue } from "@/server/lib/runtime-env";
 import type { RenderUsage } from "@/shared/audit-rendering";
@@ -58,31 +55,17 @@ export async function readBoundedText(
 }
 
 /**
- * Shopify's edge throttles requests from Cloudflare Workers, so a throttled
- * storefront page is read through Context instead. Its credits are added to
- * `usage` for the caller to bill.
+ * With `contextUsage`, a page the plain fetch can't read is read through
+ * Context, because many sites throttle or block Cloudflare Workers (Shopify's
+ * edge, bot protection). Its credits are added to `contextUsage` for the caller
+ * to bill. A missing page (404/410) is not retried there.
  */
-async function readThrottledShopifyPage(
-  url: string,
-  usage: RenderUsage,
-): Promise<string | null> {
-  const contextApiKey = await getOptionalEnvValue("CONTEXT_API_KEY");
-  if (!contextApiKey || !(await isShopifyHost(new URL(url).hostname)))
-    return null;
-  try {
-    return (await RenderedPageService.renderPage(url, { contextApiKey, usage }))
-      .html;
-  } catch {
-    return null;
-  }
-}
-
 async function fetchText(
   url: string,
   contextUsage?: RenderUsage,
 ): Promise<string | null> {
+  let current = url;
   try {
-    let current = url;
     for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
       const response = await fetch(current, {
         headers: { "user-agent": USER_AGENT, accept: "text/html,*/*" },
@@ -91,21 +74,37 @@ async function fetchText(
         redirect: "manual",
         signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       });
-      if (response.status === 429 && contextUsage) {
-        await response.body?.cancel();
-        return readThrottledShopifyPage(current, contextUsage);
-      }
-      if (response.status < 300 || response.status >= 400)
-        return response.ok ? await readBoundedText(response) : null;
+      if (response.ok) return await readBoundedText(response);
       const location = response.headers.get("location");
-      if (!location) return null;
+      if (response.status < 300 || response.status >= 400 || !location) {
+        await response.body?.cancel();
+        if (response.status === 404 || response.status === 410) return null;
+        break;
+      }
       // Re-validates host, blocks private IPs, and does DoH DNS resolution.
-      // Throws on a blocked or invalid destination.
-      current = await normalizeAndValidateStartUrl(
-        new URL(location, current).toString(),
-      );
+      // A blocked or invalid destination is not sent to Context either: it
+      // follows redirects itself and would reach the blocked host.
+      try {
+        current = await normalizeAndValidateStartUrl(
+          new URL(location, current).toString(),
+        );
+      } catch {
+        return null;
+      }
     }
-    return null;
+  } catch {
+    // Timeouts, TLS and network errors fall through to Context.
+  }
+  if (!contextUsage) return null;
+  const contextApiKey = await getOptionalEnvValue("CONTEXT_API_KEY");
+  if (!contextApiKey) return null;
+  try {
+    return (
+      await RenderedPageService.renderPage(current, {
+        contextApiKey,
+        usage: contextUsage,
+      })
+    ).html;
   } catch {
     return null;
   }
@@ -188,7 +187,7 @@ async function scrapePage(
  * exact pages (the user's own or a competitor's) rather than asking us to
  * discover a site. Each URL is independently run through the SSRF guard, so a
  * blocked or unreachable URL is skipped rather than failing the batch.
- * With `contextUsage`, throttled Shopify pages are read through Context.
+ * With `contextUsage`, pages the plain fetch can't read are read through Context.
  */
 export async function readPages(
   urls: string[],
