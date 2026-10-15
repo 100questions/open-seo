@@ -9,10 +9,10 @@ import type { BillingCustomerContext } from "@/server/billing/subscription";
 import { RankTrackingRepository } from "@/server/features/rank-tracking/repositories/RankTrackingRepository";
 import { failRunIfActive } from "@/server/features/rank-tracking/services/rankCheckRunGuards";
 import {
-  retryRankChecks,
   runLiveCheck,
   runQueuedCheck,
 } from "@/server/workflows/rankCheckPaths";
+import { retryRankChecks } from "@/server/workflows/rankCheckRetries";
 import { pgStep } from "@/server/workflows/pgStep";
 import { createDataforseoClient } from "@/server/lib/dataforseo";
 import { captureServerEvent } from "@/server/lib/posthog";
