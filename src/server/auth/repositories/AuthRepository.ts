@@ -100,6 +100,18 @@ async function getHostedUser(userId: string) {
   });
 }
 
+async function getOrganizationOwner(organizationId: string) {
+  const [owner] = await db
+    .select({ id: authUser.id, email: authUser.email })
+    .from(member)
+    .innerJoin(authUser, eq(authUser.id, member.userId))
+    .where(
+      and(eq(member.organizationId, organizationId), eq(member.role, "owner")),
+    )
+    .limit(1);
+  return owner ?? null;
+}
+
 /** Names for a set of user ids in one query; missing ids are simply absent. */
 async function getHostedUserNames(userIds: string[]) {
   if (userIds.length === 0) return [];
@@ -327,6 +339,7 @@ export const AuthRepository = {
   setProductUpdatesOptIn,
   getHostedUser,
   getHostedUserNames,
+  getOrganizationOwner,
   hasPendingInvitationForEmail,
   isAnalyticsOptedOut,
 } as const;

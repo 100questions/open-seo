@@ -16,6 +16,7 @@ import { retryRankChecks } from "@/server/workflows/rankCheckRetries";
 import { pgStep } from "@/server/workflows/pgStep";
 import { createDataforseoClient } from "@/server/lib/dataforseo";
 import { captureServerEvent } from "@/server/lib/posthog";
+import { sendCreditsExhaustedEvent } from "@/server/email/onboarding-drip";
 import { AppError } from "@/server/lib/errors";
 import { autumn } from "@/server/billing/autumn";
 import {
@@ -117,6 +118,7 @@ async function prepareRankCheckKeywords(input: {
       (monthlyCheck.balance?.remaining ?? 0) +
       (topupCheck.balance?.remaining ?? 0);
     if (available < costCredits) {
+      await sendCreditsExhaustedEvent(input.billingCustomer);
       throw new AppError(
         "INSUFFICIENT_CREDITS",
         "Insufficient credits for rank check",

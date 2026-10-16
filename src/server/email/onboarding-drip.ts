@@ -39,9 +39,19 @@ export async function markOnboardingMilestone(
   );
 }
 
+// Scheduled rank and AI visibility checks run as this placeholder user
+// (scheduledRankChecks.ts, scheduledAiVisibility.ts), so a refusal on one of
+// them goes to the organization's owner.
+const SCHEDULED_RUN_USER_ID = "system";
+
 export async function sendCreditsExhaustedEvent(
-  recipient: OnboardingRecipient,
+  customer: OnboardingRecipient & { organizationId: string },
 ) {
+  const recipient =
+    customer.userId === SCHEDULED_RUN_USER_ID
+      ? await findOrganizationOwner(customer.organizationId)
+      : customer;
+  if (!recipient) return;
   const key = `credits_exhausted:${recipient.userId}:${new Date().toISOString().slice(0, 10)}`;
   await sendOnce(key, (apiKey) =>
     sendLoopsEvent({
@@ -54,6 +64,27 @@ export async function sendCreditsExhaustedEvent(
       },
     }),
   );
+}
+
+// Imported lazily, as in captureServerEvent: most importers only report
+// events and shouldn't load the database client. Scoped because Workflow
+// steps run outside a request's Postgres scope.
+async function findOrganizationOwner(
+  organizationId: string,
+): Promise<OnboardingRecipient | null> {
+  try {
+    const [{ withPgClient }, { AuthRepository }] = await Promise.all([
+      import("@/db"),
+      import("@/server/auth/repositories/AuthRepository"),
+    ]);
+    const owner = await withPgClient(() =>
+      AuthRepository.getOrganizationOwner(organizationId),
+    );
+    return owner ? { userId: owner.id, userEmail: owner.email } : null;
+  } catch (error) {
+    console.error("onboarding drip: organization owner lookup failed", error);
+    return null;
+  }
 }
 
 // Some callers are hot paths (every request refused for credits), and Loops
@@ -69,9 +100,13 @@ async function sendOnce(
   const apiKey = await getOptionalEnvValue("LOOPS_API_KEY");
   if (!apiKey) return;
   sentKeys.add(key);
-  waitUntil(
-    send(apiKey).catch((error: unknown) => {
-      console.error(`onboarding drip: ${key} failed`, error);
-    }),
-  );
+  const work = send(apiKey).catch((error: unknown) => {
+    console.error(`onboarding drip: ${key} failed`, error);
+  });
+  try {
+    waitUntil(work);
+  } catch {
+    // No request context (Workflow step): wait for the send instead.
+    await work;
+  }
 }
