@@ -9,6 +9,8 @@ import {
   isHostedClientAuthMode,
 } from "@/lib/auth-mode";
 
+// Returns whether the app can render: true once onboarding is known to be
+// finished, or its check failed (the app is the safer fallback).
 export function useOnboardingRedirect() {
   const navigate = useNavigate();
   const { data: session } = useSession();
@@ -50,4 +52,10 @@ export function useOnboardingRedirect() {
     isEmailVerified,
     session?.user?.id,
   ]);
+
+  return (
+    !isHostedMode ||
+    onboardingQuery.isError ||
+    Boolean(onboardingQuery.data?.completedAt)
+  );
 }
