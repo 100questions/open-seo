@@ -13,6 +13,12 @@ let browserPostHogClientPromise: Promise<BrowserPostHogClient | null> | null =
 // Off until PrivacyBootstrap applies the visitor's choices, so nothing is
 // captured before we know whether analytics is allowed.
 let analyticsCaptureEnabled = false;
+// Events reported before then, such as a page's first view: the choices can
+// resolve after the page mounts. Sent if analytics starts, dropped if it
+// doesn't. Null once the choices are known.
+let eventsBeforeChoices:
+  | [string, Record<string, unknown> | undefined][]
+  | null = [];
 let clientErrorCaptureStopped = false;
 
 type ExceptionEntry = {
@@ -171,7 +177,11 @@ export function captureClientEvent(
   event: string,
   properties?: Record<string, unknown>,
 ) {
-  if (!analyticsCaptureEnabled) return;
+  if (!analyticsCaptureEnabled) {
+    if (eventsBeforeChoices && eventsBeforeChoices.length < 50)
+      eventsBeforeChoices.push([event, properties]);
+    return;
+  }
   withPostHogClient((client) => client.capture(event, properties));
 }
 
@@ -197,6 +207,7 @@ export function resetAnalyticsUser() {
 
 export function stopAnalyticsCapture() {
   analyticsCaptureEnabled = false;
+  eventsBeforeChoices = null;
   // Chained even while PostHog is still loading, so this runs after a pending
   // start and the stop wins.
   withExistingPostHogClient((client) => {
@@ -207,11 +218,15 @@ export function stopAnalyticsCapture() {
 
 export function startAnalyticsCapture({ replay }: { replay: boolean }) {
   analyticsCaptureEnabled = true;
+  const pending = eventsBeforeChoices ?? [];
+  eventsBeforeChoices = null;
   withPostHogClient((client) => {
     if (!analyticsCaptureEnabled) return;
     client.opt_in_capturing({ captureEventName: false });
     if (replay) client.startSessionRecording();
     else client.stopSessionRecording();
+    for (const [event, properties] of pending)
+      client.capture(event, properties);
   });
 }
 

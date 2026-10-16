@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { PlanPageAccountMenu } from "@/client/features/billing/PlanPageAccountMenu";
@@ -65,6 +66,15 @@ function OnboardingPage() {
       }),
   });
 
+  // Pageviews drop the query string, `?step=` included, so each step reports
+  // itself.
+  useEffect(() => {
+    captureClientEvent("onboarding:step_viewed", {
+      step,
+      step_name: ONBOARDING_STEPS[step],
+    });
+  }, [step]);
+
   const goToStep = (next: number) =>
     void navigate({
       to: "/onboarding",
@@ -97,9 +107,6 @@ function OnboardingPage() {
       // Keep the user here to retry; an unsaved completion would redirect back.
       return;
     }
-    captureClientEvent("onboarding:completed", {
-      from_free_check: Boolean(domain),
-    });
     // Visitors who signed up from the free keyword check came to see the rest
     // of its results, so land them on the saved website's keywords ranking
     // #4-20 instead of the dashboard.

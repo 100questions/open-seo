@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   createProject: vi.fn(),
   listMembershipsForUser: vi.fn(),
   markOnboardingCompleted: vi.fn(),
+  captureServerEvent: vi.fn(),
 }));
 
 vi.mock("@/server/features/projects/services/ProjectService", () => ({
@@ -22,6 +23,14 @@ vi.mock(
     },
   }),
 );
+
+vi.mock("cloudflare:workers", () => ({
+  waitUntil: (promise: Promise<unknown>) => promise,
+}));
+
+vi.mock("@/server/lib/posthog", () => ({
+  captureServerEvent: mocks.captureServerEvent,
+}));
 
 vi.mock("@/server/auth/repositories/AuthRepository", () => ({
   AuthRepository: {
@@ -125,7 +134,7 @@ describe("create_project with a user-scoped credential", () => {
       languageCode: "en",
     });
     mocks.listMembershipsForUser.mockResolvedValue(memberships);
-    mocks.markOnboardingCompleted.mockResolvedValue(undefined);
+    mocks.markOnboardingCompleted.mockResolvedValue(false);
   });
 
   it("errors with the organization list when no organizationId is given and the user has several", async () => {
@@ -191,5 +200,21 @@ describe("create_project with a user-scoped credential", () => {
       "user_123",
       "org_a",
     );
+  });
+
+  it("reports onboarding completion only from the call that completed it", async () => {
+    mocks.listMembershipsForUser.mockResolvedValue([memberships[0]]);
+    mocks.markOnboardingCompleted.mockResolvedValueOnce(true);
+
+    await createProjectTool.handler({ name: "Acme" }, userScopedContext);
+    await createProjectTool.handler({ name: "Acme" }, userScopedContext);
+
+    expect(mocks.captureServerEvent).toHaveBeenCalledTimes(1);
+    expect(mocks.captureServerEvent).toHaveBeenCalledWith({
+      distinctId: "user_123",
+      event: "onboarding:completed",
+      organizationId: "org_a",
+      properties: { via: "agent_project" },
+    });
   });
 });

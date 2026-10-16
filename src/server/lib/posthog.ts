@@ -76,7 +76,8 @@ export async function captureServerEvent(args: {
   distinctId: string;
   event: string;
   properties?: Record<string, unknown>;
-  organizationId: string;
+  /** Null only before the user has an organization (sign-up). */
+  organizationId: string | null;
 }) {
   if (!(await isHostedServerAuthMode())) {
     return;
@@ -103,9 +104,9 @@ export async function captureServerEvent(args: {
       distinctId: args.distinctId,
       event: args.event,
       properties: args.properties,
-      groups: {
-        organization: args.organizationId,
-      },
+      groups: args.organizationId
+        ? { organization: args.organizationId }
+        : undefined,
     });
   } catch (posthogError) {
     console.error("posthog server capture failed", posthogError);

@@ -9,14 +9,17 @@ import {
 } from "@cloudflare/workers-oauth-provider";
 import { z } from "zod";
 import { getHostedBaseUrl } from "@/lib/auth";
+import { OAUTH_AUTHORIZE_PATH } from "@/lib/auth-redirect";
 import {
   getMcpResource,
   MCP_OAUTH_SCOPES,
   MCP_SCOPE,
 } from "@/lib/oauth-resource";
 import { asAppError } from "@/server/lib/errors";
-import { recordMcpAuthorized } from "@/server/features/activation/mcpActivation";
-import { ActivationRepository } from "@/server/features/activation/repositories/ActivationRepository";
+import {
+  completeOnboardingFromAgent,
+  recordMcpAuthorized,
+} from "@/server/features/activation/mcpActivation";
 import { markOnboardingMilestone } from "@/server/email/onboarding-drip";
 import { captureServerEvent } from "@/server/lib/posthog";
 import {
@@ -30,7 +33,6 @@ import { getPublicOrigin } from "@/server/mcp/public-origin";
 import { resolveHostedContext } from "@/middleware/ensure-user/hosted";
 import { handleMcpApiKeyRequest } from "@/server/mcp/api-key-auth";
 
-const OAUTH_AUTHORIZE_PATH = "/api/auth/oauth2/authorize";
 const OAUTH_TOKEN_PATH = "/api/auth/oauth2/token";
 const OAUTH_REGISTER_PATH = "/api/auth/oauth2/register";
 
@@ -360,13 +362,8 @@ async function handleOAuthConsentResponse(
   await recordMcpAuthorized(context.organizationId);
   // Connecting an agent is the last onboarding step, so this finishes
   // onboarding for people who paste the setup prompt and never return to the
-  // wizard. Best-effort: the authorization already succeeded.
-  await ActivationRepository.markOnboardingCompleted(
-    context.userId,
-    context.organizationId,
-  ).catch((error: unknown) => {
-    console.error("oauth consent: onboarding completion failed", error);
-  });
+  // wizard.
+  await completeOnboardingFromAgent(context, "agent_connect");
   await markOnboardingMilestone(context, "mcpConnected");
 
   waitUntil(

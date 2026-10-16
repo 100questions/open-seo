@@ -127,7 +127,11 @@ function WebsiteForm({
       try {
         await saveMutation.mutateAsync(value);
       } catch (error) {
-        if (getErrorCode(error) === "VALIDATION_ERROR")
+        const errorCode = getErrorCode(error);
+        captureClientEvent("onboarding:website_save_failed", {
+          error_code: errorCode ?? "UNKNOWN",
+        });
+        if (errorCode === "VALIDATION_ERROR")
           formApi.setErrorMap({
             onSubmit: {
               fields: { domain: "Enter a valid domain, like acme.com." },

@@ -97,6 +97,7 @@ vi.mock("@/middleware/ensure-user/hosted", () => ({
 
 vi.mock("@/server/features/activation/mcpActivation", () => ({
   recordMcpAuthorized: vi.fn(),
+  completeOnboardingFromAgent: vi.fn(),
 }));
 
 vi.mock("@/server/lib/posthog", () => ({

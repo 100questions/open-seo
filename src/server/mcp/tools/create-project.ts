@@ -1,6 +1,6 @@
 import { requireOrgPermission } from "@/server/auth/org-gate";
 import { AuthRepository } from "@/server/auth/repositories/AuthRepository";
-import { ActivationRepository } from "@/server/features/activation/repositories/ActivationRepository";
+import { completeOnboardingFromAgent } from "@/server/features/activation/mcpActivation";
 import { ProjectService } from "@/server/features/projects/services/ProjectService";
 import { AppError } from "@/server/lib/errors";
 import { mcpResponse } from "@/server/mcp/formatters";
@@ -156,12 +156,10 @@ export const createProjectTool = {
     // Best-effort: the project already exists, and an error here would make
     // the agent retry and create a duplicate.
     if (auth.orgScope === "user") {
-      await ActivationRepository.markOnboardingCompleted(
-        auth.userId,
-        target.organizationId,
-      ).catch((error: unknown) => {
-        console.error("create_project: onboarding completion failed", error);
-      });
+      await completeOnboardingFromAgent(
+        { userId: auth.userId, organizationId: target.organizationId },
+        "agent_project",
+      );
     }
     return mcpResponse({
       text: `Created project ${project.id}  ${project.name}${
