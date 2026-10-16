@@ -1,4 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
+import { ArrowRight } from "lucide-react";
 import * as React from "react";
 import { toast } from "sonner";
 import { Button } from "@/client/components/ui/button";
@@ -13,15 +14,15 @@ import { setProductUpdatesOptIn } from "@/serverFunctions/product-updates";
 import type { PrivacyChoices } from "@/shared/privacy-choices";
 import { PRIVACY_URL } from "@/shared/terms";
 
-/** Last onboarding step on the hosted app: usage analytics and product-update
- *  emails. Each switch starts from the current choice, which is the region
- *  default until the user picks. Finish saves both. */
+/** Onboarding step for usage analytics and product-update emails. Each switch
+ *  starts from the current choice, which is the region default until the user
+ *  picks. Continue saves both. */
 export function AnalyticsOnboardingStep({
   onBack,
-  onFinish,
+  onNext,
 }: {
   onBack: () => void;
-  onFinish: () => void;
+  onNext: () => void;
 }) {
   const choices = usePrivacyChoices();
   const { data: session, refetch } = useSession();
@@ -29,7 +30,7 @@ export function AnalyticsOnboardingStep({
   const [analytics, setAnalytics] = React.useState<boolean>();
   const [productUpdates, setProductUpdates] = React.useState<boolean>();
 
-  const finish = useMutation({
+  const save = useMutation({
     // The email choice is only sent when the switch was flipped: signup
     // already applied the region default.
     mutationFn: async (next: {
@@ -51,7 +52,7 @@ export function AnalyticsOnboardingStep({
       toast.error(
         "We couldn't save your email choice. You can change it in Settings.",
       ),
-    onSettled: onFinish,
+    onSettled: onNext,
   });
 
   if (!choices) return null;
@@ -110,15 +111,16 @@ export function AnalyticsOnboardingStep({
           <Button
             type="button"
             className="font-semibold"
-            pending={finish.isPending}
+            pending={save.isPending}
             onClick={() =>
-              finish.mutate({
+              save.mutate({
                 privacy: { ...choices, analytics: analyticsOn },
                 productUpdates,
               })
             }
           >
-            Finish
+            Continue
+            <ArrowRight className="size-4" />
           </Button>
         }
       />

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { AgentList } from "./AgentList";
 import { AgentSetupPanel, AGENT_SETUP_DESCRIPTION } from "./AgentSetupPanel";
@@ -6,21 +7,20 @@ import { captureClientEvent } from "@/client/lib/posthog";
 import { WizardFooter } from "@/client/features/onboarding/WizardFooter";
 import { Button } from "@/client/components/ui/button";
 
+/** Last onboarding step. Onboarding finishes when the user clicks Go to
+ *  dashboard, or when their agent connects over MCP (the server marks it). */
 export function AgentSetup({
-  onNext,
+  onFinish,
   onBack,
-  nextLabel = "Finish",
-  disabled = false,
 }: {
-  onNext: () => void;
+  onFinish: () => void;
   onBack: () => void;
-  nextLabel?: string;
-  disabled?: boolean;
 }) {
   const prompt = getAgentSetupPrompt(window.location.origin);
+  const [copied, setCopied] = useState(false);
 
   return (
-    <fieldset disabled={disabled}>
+    <div>
       <div className="mb-8">
         <h1 className="text-2xl font-semibold tracking-tight">
           Set up your agent
@@ -32,8 +32,18 @@ export function AgentSetup({
       </div>
       <AgentSetupPanel
         prompt={prompt}
-        onCopy={() => captureClientEvent("onboarding:setup_prompt_copy")}
-      />
+        copyVariant={copied ? "outline" : "default"}
+        onCopy={() => {
+          setCopied(true);
+          captureClientEvent("onboarding:setup_prompt_copy");
+        }}
+      >
+        {copied ? (
+          <p className="mt-3 text-center text-xs text-muted-foreground">
+            Paste it into your agent and approve the connection.
+          </p>
+        ) : null}
+      </AgentSetupPanel>
       <div className="mt-7 border-t border-border pt-5">
         <WizardFooter
           className="mt-0"
@@ -41,15 +51,19 @@ export function AgentSetup({
           continueAction={
             <Button
               type="button"
-              variant="ghost"
-              className="h-8 gap-2 px-3 text-xs font-semibold"
-              onClick={onNext}
+              variant={copied ? "default" : "ghost"}
+              className={
+                copied
+                  ? "font-semibold"
+                  : "h-8 gap-2 px-3 text-xs font-semibold"
+              }
+              onClick={onFinish}
             >
-              {nextLabel} <ArrowRight className="size-4" />
+              Go to dashboard <ArrowRight className="size-4" />
             </Button>
           }
         />
       </div>
-    </fieldset>
+    </div>
   );
 }

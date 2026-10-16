@@ -1,3 +1,4 @@
+import type { ComponentProps, ReactNode } from "react";
 import { Package } from "lucide-react";
 import { CopyButton } from "@/client/components/CopyButton";
 
@@ -7,9 +8,14 @@ export const AGENT_SETUP_DESCRIPTION =
 export function AgentSetupPanel({
   prompt,
   onCopy,
+  copyVariant = "default",
+  children,
 }: {
   prompt: string;
   onCopy?: () => void;
+  copyVariant?: ComponentProps<typeof CopyButton>["variant"];
+  /** Shown under the copy button, e.g. what to do after copying. */
+  children?: ReactNode;
 }) {
   return (
     <>
@@ -26,7 +32,7 @@ export function AgentSetupPanel({
           </div>
         </div>
         <CopyButton
-          variant="default"
+          variant={copyVariant}
           size="lg"
           className="w-full"
           value={prompt}
@@ -34,6 +40,7 @@ export function AgentSetupPanel({
           successMessage="Setup prompt copied"
           onCopy={onCopy}
         />
+        {children}
       </div>
       <div className="mt-4 text-center">
         <a

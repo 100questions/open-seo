@@ -57,10 +57,11 @@ export function GscReEngagementModal({
     },
   });
 
-  // Users who finished onboarding without seeing the Search Console step have no
+  // Users who finished onboarding outside the wizard have no
   // gscNudgeDismissedAt set: legacy users from before the step existed, and
-  // users whose agent completed onboarding via create_project. Anyone who
-  // completes the wizard gets it stamped, and dismissing/connecting clears it.
+  // users whose agent completed onboarding by connecting over MCP or calling
+  // create_project. Anyone who completes the wizard gets it stamped, and
+  // dismissing/connecting clears it.
   const eligible =
     hosted &&
     !suppressed &&
