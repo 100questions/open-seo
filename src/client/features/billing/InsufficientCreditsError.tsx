@@ -23,6 +23,23 @@ export function InsufficientCreditsError({
   variant?: "inline" | "card" | "page";
   title?: string;
 }) {
+  const { message, action } = useCreditsOffer();
+  return (
+    <ErrorState
+      variant={variant}
+      title={title}
+      message={message}
+      action={action}
+    />
+  );
+}
+
+/** The card's button alone, for a spot too small for the card. */
+export function GetCreditsButton() {
+  return useCreditsOffer().action;
+}
+
+function useCreditsOffer() {
   const { accountQuery, isFreePlan, refillDate } = useCreditBalance();
 
   let message: string;
@@ -49,19 +66,19 @@ export function InsufficientCreditsError({
     );
   }
 
-  return (
-    <ErrorState
-      variant={variant}
-      title={title}
-      message={message}
-      action={action}
-    />
-  );
+  return { message, action };
 }
 
 function CreditsButton({ link, label }: { link: ReactElement; label: string }) {
   return (
-    <Button variant="outline" size="sm" nativeButton={false} render={link}>
+    // Its own text color: a red error around it would otherwise tint it.
+    <Button
+      variant="outline"
+      size="sm"
+      className="text-foreground"
+      nativeButton={false}
+      render={link}
+    >
       {label}
     </Button>
   );

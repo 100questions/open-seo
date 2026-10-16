@@ -119,10 +119,8 @@ async function prepareRankCheckKeywords(input: {
       (topupCheck.balance?.remaining ?? 0);
     if (available < costCredits) {
       await sendCreditsExhaustedEvent(input.billingCustomer);
-      throw new AppError(
-        "INSUFFICIENT_CREDITS",
-        "Insufficient credits for rank check",
-      );
+      // The code alone, so the run's saved error shows the credits card.
+      throw new AppError("INSUFFICIENT_CREDITS");
     }
   }
 

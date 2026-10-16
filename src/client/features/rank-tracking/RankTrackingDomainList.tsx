@@ -6,6 +6,7 @@ import { LOCATIONS } from "@/client/features/keywords/locations";
 import {
   AlertTriangle,
   Archive,
+  CircleAlert,
   Globe,
   Plus,
   ChevronRight,
@@ -22,6 +23,7 @@ import {
 } from "@/shared/keyword-locations";
 import { ConfirmDialog } from "@/client/components/ConfirmDialog";
 import { EmptyState } from "@/client/components/EmptyState";
+import { GetCreditsButton } from "@/client/features/billing/InsufficientCreditsError";
 import { Button } from "@/client/components/ui/button";
 import {
   Card,
@@ -280,10 +282,14 @@ function DomainRow({
           )}
         </p>
         {summary.lastSkipReason === "insufficient_credits" && (
-          <p className="flex items-center gap-1 text-xs text-warning">
-            <AlertTriangle className="size-3" />
-            Scheduled check skipped — insufficient credits
-          </p>
+          <div className="mt-1 flex items-center gap-2 text-xs text-destructive">
+            <CircleAlert className="size-3" />
+            Scheduled check skipped: out of credits
+            {/* Above the row link, like the archive button. */}
+            <span className="pointer-events-auto relative z-10">
+              <GetCreditsButton />
+            </span>
+          </div>
         )}
         {summary.lastSkipReason === "plan_required" && (
           <p className="flex items-center gap-1 text-xs text-warning">
