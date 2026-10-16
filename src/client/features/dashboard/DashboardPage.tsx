@@ -47,19 +47,8 @@ export function DashboardPage({
   const overviewQuery = useQuery({
     queryKey: ["dashboardOverview", projectId],
     queryFn: () => getDashboardOverview({ data: { projectId } }),
-    refetchInterval: (query) => {
-      const audit = query.state.data?.audit;
-      if (audit?.status === "running") return 3000;
-      // Onboarding starts a new site's first audit in the background, so it
-      // can appear just after the dashboard loads. Keep checking for a minute.
-      if (
-        audit === null &&
-        activationQuery.data?.domain &&
-        query.state.dataUpdateCount < 20
-      )
-        return 3000;
-      return false;
-    },
+    refetchInterval: (query) =>
+      query.state.data?.audit?.status === "running" ? 3000 : false,
   });
 
   const activation = activationQuery.data;

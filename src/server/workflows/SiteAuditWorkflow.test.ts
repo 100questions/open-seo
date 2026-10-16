@@ -34,6 +34,9 @@ vi.mock("@/server/features/audit/repositories/AuditRepository", () => ({
     failAudit: mocks.failAudit,
   },
 }));
+vi.mock("@/server/workflows/siteAuditStart", () => ({
+  resolveAuditStart: async (input: object) => ({ ...input, access: null }),
+}));
 vi.mock("@/server/features/audit/services/CrawlerCredentialService", () => ({
   CrawlerCredentialService: { openCrawlerAccess: vi.fn() },
 }));

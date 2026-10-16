@@ -28,11 +28,7 @@ import {
   type AuditConfig,
   type LighthouseStrategy,
 } from "@/server/lib/audit/types";
-import {
-  isShopifyHost,
-  normalizeAndValidateStartUrl,
-  resolveStartUrlRedirects,
-} from "@/server/lib/audit/url-policy";
+import { normalizeAndValidateStartUrl } from "@/server/lib/audit/url-policy";
 import { reconcileRunningAudit } from "@/server/features/audit/services/auditReconciler";
 import { isHostedServerAuthMode } from "@/server/lib/runtime-env";
 
@@ -82,44 +78,19 @@ async function startAudit(input: {
 
   const auditId = crypto.randomUUID();
   const organizationId = input.billingCustomer.organizationId;
-  const requestedUrl = await normalizeAndValidateStartUrl(input.startUrl);
-  // The probe itself can be rate limited, so it carries the credential too.
-  let credential = await CrawlerCredentialService.resolveCrawlerAccess(
+  // The site itself is first contacted by the workflow's first step
+  // (resolveAuditStart), so starting an audit never waits on a slow site.
+  const startUrl = await normalizeAndValidateStartUrl(input.startUrl);
+  const credential = await CrawlerCredentialService.resolveCrawlerAccess(
     organizationId,
     input.projectId,
-    new URL(requestedUrl).hostname,
+    new URL(startUrl).hostname,
   );
-  // Anchor the audit to the site's real origin: a start domain that 301s
-  // elsewhere (…net -> …com, apex -> www) would otherwise dead-end after
-  // one page at the same-origin crawl boundary.
-  const probe = await resolveStartUrlRedirects(
-    requestedUrl,
-    await CrawlerCredentialService.openCrawlerAccess(credential?.sealed),
-  );
-  const startUrl = probe.url;
-  const startHost = new URL(startUrl).hostname;
-  if (startHost !== new URL(requestedUrl).hostname) {
-    credential = await CrawlerCredentialService.resolveCrawlerAccess(
-      organizationId,
-      input.projectId,
-      startHost,
-    );
-  }
 
   const config: AuditConfig = {
     maxPages,
     lighthouseStrategy,
     renderJavaScript,
-    // Shopify storefronts answer with `powered-by: Shopify`; knowing this is
-    // what lets a rendered crawl read throttled pages and the report explain
-    // an unrendered one. A throttled probe sees no header, but a saved
-    // signature is always Shopify's, and so is a host in Shopify's range.
-    sitePlatform:
-      credential ||
-      probe.poweredBy?.toLowerCase().includes("shopify") ||
-      (await isShopifyHost(startHost))
-        ? "shopify"
-        : undefined,
     crawlerCredentialId: credential?.id,
   };
 

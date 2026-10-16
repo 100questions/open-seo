@@ -26,8 +26,6 @@ vi.mock("@/server/lib/audit/rendering-billing", () => ({
 }));
 vi.mock("@/server/lib/audit/url-policy", () => ({
   normalizeAndValidateStartUrl: async (url: string) => url,
-  resolveStartUrlRedirects: async (url: string) => ({ url }),
-  isShopifyHost: async () => false,
 }));
 vi.mock("@/server/features/audit/services/CrawlerCredentialService", () => ({
   CrawlerCredentialService: {
