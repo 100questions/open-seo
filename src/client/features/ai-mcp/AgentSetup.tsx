@@ -1,11 +1,29 @@
-import { useState } from "react";
-import { ArrowRight } from "lucide-react";
+import { useEffect, useEffectEvent, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { ArrowRight, Check } from "lucide-react";
 import { AgentList } from "./AgentList";
+import { ClaudeIcon, OpenAIIcon } from "./AgentIcons";
 import { AgentSetupPanel, AGENT_SETUP_DESCRIPTION } from "./AgentSetupPanel";
 import { getAgentSetupPrompt } from "./agentSetupPrompt";
 import { captureClientEvent } from "@/client/lib/posthog";
 import { WizardFooter } from "@/client/features/onboarding/WizardFooter";
 import { Button } from "@/client/components/ui/button";
+import { getMcpAuthorizedAt } from "@/serverFunctions/onboarding";
+
+const ONE_CLICK_INSTALLS = [
+  {
+    agent: "chatgpt",
+    name: "ChatGPT",
+    href: "https://chatgpt.com/plugins/plugin_asdk_app_6abddd2c7e4c819191f1398c4bd8e9b3",
+    Icon: OpenAIIcon,
+  },
+  {
+    agent: "claude",
+    name: "Claude",
+    href: "https://claude.com/marketplace/connectors/openseo",
+    Icon: ClaudeIcon,
+  },
+];
 
 /** Last onboarding step. Onboarding finishes when the user clicks Go to
  *  dashboard, or when their agent connects over MCP (the server marks it). */
@@ -18,6 +36,25 @@ export function AgentSetup({
 }) {
   const prompt = getAgentSetupPrompt(window.location.origin);
   const [copied, setCopied] = useState(false);
+  // Once the user copies the prompt or opens an agent listing, Go to dashboard
+  // becomes the main button.
+  const [startedSetup, setStartedSetup] = useState(false);
+  // Polls while the tab is visible, so the step moves on within a few seconds
+  // of the user returning from their agent.
+  const { data } = useQuery({
+    queryKey: ["mcpAuthorizedAt"],
+    queryFn: () => getMcpAuthorizedAt(),
+    refetchInterval: 3_000,
+  });
+  const connected = Boolean(data?.authorizedAt);
+
+  // Leave "Connected" on screen briefly before moving on.
+  const finish = useEffectEvent(onFinish);
+  useEffect(() => {
+    if (!connected) return;
+    const timer = setTimeout(finish, 1_500);
+    return () => clearTimeout(timer);
+  }, [connected]);
 
   return (
     <div>
@@ -32,13 +69,43 @@ export function AgentSetup({
       </div>
       <AgentSetupPanel
         prompt={prompt}
-        copyVariant={copied ? "outline" : "default"}
+        copyVariant={startedSetup ? "outline" : "default"}
         onCopy={() => {
           setCopied(true);
+          setStartedSetup(true);
           captureClientEvent("onboarding:setup_prompt_copy");
         }}
+        actions={ONE_CLICK_INSTALLS.map(({ agent, name, href, Icon }) => (
+          <Button
+            key={agent}
+            variant="outline"
+            size="lg"
+            className="w-full"
+            nativeButton={false}
+            render={<a href={href} target="_blank" rel="noreferrer" />}
+            onClick={() => {
+              setStartedSetup(true);
+              captureClientEvent("onboarding:add_to_agent_click", { agent });
+            }}
+          >
+            <Icon data-icon="inline-start" />
+            {/* "Add to" drops on narrow screens so both buttons fit one row. */}
+            <span>
+              <span className="max-sm:sr-only">Add to </span>
+              {name}
+            </span>
+          </Button>
+        ))}
       >
-        {copied ? (
+        {connected ? (
+          <p
+            role="status"
+            className="mt-3 flex items-center justify-center gap-1.5 text-sm font-medium text-success"
+          >
+            <Check className="size-4" aria-hidden />
+            Connected
+          </p>
+        ) : copied ? (
           <p className="mt-3 text-center text-xs text-muted-foreground">
             Paste it into your agent and approve the connection.
           </p>
@@ -51,9 +118,9 @@ export function AgentSetup({
           continueAction={
             <Button
               type="button"
-              variant={copied ? "default" : "ghost"}
+              variant={startedSetup ? "default" : "ghost"}
               className={
-                copied
+                startedSetup
                   ? "font-semibold"
                   : "h-8 gap-2 px-3 text-xs font-semibold"
               }

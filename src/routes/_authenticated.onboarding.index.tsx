@@ -92,6 +92,9 @@ function OnboardingPage() {
   };
 
   const handleFinish = async () => {
+    // Agent setup also finishes on its own once the agent connects, so this
+    // can run again while a click's save is still pending.
+    if (saveMutation.isPending) return;
     try {
       await saveMutation.mutateAsync({ completed: true });
       // The route guard fetched this query without a mounted observer. Refetch

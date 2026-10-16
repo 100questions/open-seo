@@ -4,6 +4,7 @@ import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { user, userOnboardingAnswers } from "@/db/schema";
 import { db } from "@/db";
+import { ActivationRepository } from "@/server/features/activation/repositories/ActivationRepository";
 import { captureServerEvent } from "@/server/lib/posthog";
 import { requireAuthenticatedContext } from "@/serverFunctions/middleware";
 
@@ -61,6 +62,16 @@ export const getOnboardingAnswers = createServerFn({ method: "GET" })
         foundVia: answers?.foundVia ?? null,
       },
     };
+  });
+
+// The onboarding Agent setup step polls this to see when an agent connects.
+export const getMcpAuthorizedAt = createServerFn({ method: "GET" })
+  .middleware(requireAuthenticatedContext)
+  .handler(async ({ context }) => {
+    const activation = await ActivationRepository.getOrganizationActivation(
+      context.organizationId,
+    );
+    return { authorizedAt: activation?.firstMcpAuthorizedAt ?? null };
   });
 
 export const saveOnboardingAnswers = createServerFn({ method: "POST" })
