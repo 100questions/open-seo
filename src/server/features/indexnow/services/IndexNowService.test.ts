@@ -20,27 +20,35 @@ const KEY = "abc123def456";
 const scope = { projectId: "p1", organizationId: "o1" };
 const fetchMock = vi.fn<typeof fetch>();
 
-const isBing = (input: Parameters<typeof fetch>[0]) =>
-  (input instanceof Request ? input.url : input.toString()).startsWith(
-    "https://www.bing.com/",
+const ENGINES = ["www.bing.com", "yandex.com", "indexnow.yep.com"];
+const engineOf = (input: Parameters<typeof fetch>[0]) => {
+  const { hostname } = new URL(
+    input instanceof Request ? input.url : input.toString(),
   );
+  return ENGINES.includes(hostname) ? hostname : null;
+};
 
-// Key files answer with `keyFile`; the Bing endpoint answers with `bing`.
-function respond(
-  keyFile: Response,
-  bing = new Response(null, { status: 200 }),
-) {
-  fetchMock.mockImplementation(async (input) =>
-    isBing(input) ? bing.clone() : keyFile.clone(),
-  );
+// Key files answer with `keyFile`; engines answer in ENGINES order with
+// `engines`, and with 200 past the end of the list.
+function respond(keyFile: Response, ...engines: Response[]) {
+  fetchMock.mockImplementation(async (input) => {
+    const engine = engineOf(input);
+    if (!engine) return keyFile.clone();
+    return (
+      engines[ENGINES.indexOf(engine)]?.clone() ??
+      new Response(null, { status: 200 })
+    );
+  });
 }
 
-function bingBodies(): unknown[] {
-  return fetchMock.mock.calls
-    .filter(([input]) => isBing(input))
-    .map(([, init]): unknown =>
-      typeof init?.body === "string" ? JSON.parse(init.body) : null,
-    );
+function submissions() {
+  return fetchMock.mock.calls.flatMap(([input, init]) => {
+    const engine = engineOf(input);
+    if (!engine) return [];
+    const body: unknown =
+      typeof init?.body === "string" ? JSON.parse(init.body) : null;
+    return [{ engine, body }];
+  });
 }
 
 beforeEach(() => {
@@ -59,7 +67,7 @@ describe("IndexNowService.submitUrls", () => {
       "not a url",
     ]);
 
-    expect(bingBodies()).toEqual([
+    expect(submissions().map((submission) => submission.body)).toEqual([
       { host: "example.com", key: KEY, urlList: ["https://example.com/a"] },
       {
         host: "www.example.com",
@@ -115,7 +123,7 @@ describe("IndexNowService.submitUrls", () => {
       "https://example.com/a",
     ]);
 
-    expect(bingBodies()).toEqual([]);
+    expect(submissions()).toEqual([]);
     expect(result.hosts[0]?.status).toBe("failed");
   });
 
@@ -129,17 +137,36 @@ describe("IndexNowService.submitUrls", () => {
       "https://example.com/a",
     ]);
 
-    expect(bingBodies()).toHaveLength(1);
+    expect(submissions()).toHaveLength(1);
     expect(result.hosts[0]?.status).toBe("submitted");
   });
 
-  it("reports a key IndexNow rejects", async () => {
+  it("moves on to the next engine when one rate-limits", async () => {
+    respond(
+      new Response(KEY),
+      new Response(null, { status: 429 }),
+      new Response(null, { status: 202 }),
+    );
+
+    const result = await IndexNowService.submitUrls(scope, [
+      "https://example.com/a",
+    ]);
+
+    expect(submissions().map((submission) => submission.engine)).toEqual([
+      "www.bing.com",
+      "yandex.com",
+    ]);
+    expect(result.hosts[0]?.status).toBe("submitted");
+  });
+
+  it("reports a key IndexNow rejects without trying other engines", async () => {
     respond(new Response(KEY), new Response(null, { status: 403 }));
 
     const result = await IndexNowService.submitUrls(scope, [
       "https://example.com/a",
     ]);
 
+    expect(submissions()).toHaveLength(1);
     expect(result.hosts[0]?.status).toBe("failed");
     expect(result.hosts[0]?.message).toContain("https://example.com");
   });

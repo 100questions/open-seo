@@ -3,10 +3,15 @@ import { normalizeAndValidateStartUrl } from "@/server/lib/audit/url-policy";
 import { AppError } from "@/server/lib/errors";
 import { readBoundedText } from "@/server/lib/scrape";
 
-// Bing shares every submission with the other IndexNow engines (Yandex,
-// Seznam, Naver, Yep, ...), so one request reaches all of them, and its status
-// codes come from the largest participant.
-const INDEXNOW_ENDPOINT = "https://www.bing.com/indexnow";
+// IndexNow engines share every submission with each other, so one accepted
+// request reaches all of them. Bing goes first as the largest participant. Bing
+// and some other engines rate-limit shared hosting IPs, including Cloudflare
+// Workers', so a rate limit, server error or timeout moves on to the next one.
+const INDEXNOW_ENDPOINTS = [
+  "https://www.bing.com/indexnow",
+  "https://yandex.com/indexnow",
+  "https://indexnow.yep.com/indexnow",
+];
 const REQUEST_TIMEOUT_MS = 10_000;
 
 interface ProjectScope {
@@ -118,7 +123,7 @@ function describeResponse(
       return {
         status: "failed",
         message:
-          "Too many submissions for this site. Wait before trying again, and only submit pages that changed.",
+          "Search engines are refusing submissions right now. Try again later, and only submit pages that changed.",
       };
     default:
       return {
@@ -126,6 +131,38 @@ function describeResponse(
         message: `IndexNow returned HTTP ${status}.`,
       };
   }
+}
+
+/** The engine's status code, or undefined when it didn't respond. */
+async function postToEngine(
+  endpoint: string,
+  host: string,
+  body: string,
+): Promise<number | undefined> {
+  let response: Response;
+  try {
+    response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "content-type": "application/json; charset=utf-8" },
+      body,
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
+  } catch (error) {
+    console.warn(
+      `indexnow.submit ${endpoint} network error for ${host}`,
+      error,
+    );
+    return undefined;
+  }
+  if (response.ok) {
+    void response.body?.cancel().catch(() => {});
+  } else {
+    const detail = await readBoundedText(response).catch(() => null);
+    console.warn(
+      `indexnow.submit ${endpoint} HTTP ${response.status} for ${host}: ${detail?.slice(0, 200) ?? ""}`,
+    );
+  }
+  return response.status;
 }
 
 async function submitHost(
@@ -137,29 +174,20 @@ async function submitHost(
   const problem = await findKeyFileProblem(host, key);
   if (problem) return { ...base, status: "failed", message: problem };
 
-  let response: Response;
-  try {
-    response = await fetch(INDEXNOW_ENDPOINT, {
-      method: "POST",
-      headers: { "content-type": "application/json; charset=utf-8" },
-      body: JSON.stringify({ host, key, urlList }),
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-    });
-  } catch (error) {
-    console.warn("indexnow.submit network error", error);
+  const body = JSON.stringify({ host, key, urlList });
+  let status: number | undefined;
+  for (const endpoint of INDEXNOW_ENDPOINTS) {
+    status = await postToEngine(endpoint, host, body);
+    if (status !== undefined && status !== 429 && status < 500) break;
+  }
+  if (status === undefined) {
     return {
       ...base,
       status: "failed",
       message: "IndexNow didn't respond. Try again later.",
     };
   }
-  if (response.status >= 300) {
-    console.warn(`indexnow.submit HTTP ${response.status} for ${host}`);
-  }
-  return {
-    ...base,
-    ...describeResponse(response.status, urlList.length, host),
-  };
+  return { ...base, ...describeResponse(status, urlList.length, host) };
 }
 
 /**
