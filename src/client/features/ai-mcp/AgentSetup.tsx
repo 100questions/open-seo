@@ -2,28 +2,13 @@ import { useEffect, useEffectEvent, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Check } from "lucide-react";
 import { AgentList } from "./AgentList";
-import { ClaudeIcon, OpenAIIcon } from "./AgentIcons";
+import { ONE_CLICK_INSTALLS } from "./agentInstalls";
 import { AgentSetupPanel, AGENT_SETUP_DESCRIPTION } from "./AgentSetupPanel";
 import { getAgentSetupPrompt } from "./agentSetupPrompt";
 import { captureClientEvent } from "@/client/lib/posthog";
 import { WizardFooter } from "@/client/features/onboarding/WizardFooter";
 import { Button } from "@/client/components/ui/button";
 import { getMcpAuthorizedAt } from "@/serverFunctions/onboarding";
-
-const ONE_CLICK_INSTALLS = [
-  {
-    agent: "chatgpt",
-    name: "ChatGPT",
-    href: "https://chatgpt.com/plugins/plugin_asdk_app_6abddd2c7e4c819191f1398c4bd8e9b3",
-    Icon: OpenAIIcon,
-  },
-  {
-    agent: "claude",
-    name: "Claude",
-    href: "https://claude.com/marketplace/connectors/openseo",
-    Icon: ClaudeIcon,
-  },
-];
 
 /** Last onboarding step. Onboarding finishes when the user clicks Go to
  *  dashboard, or when their agent connects over MCP (the server marks it). */
