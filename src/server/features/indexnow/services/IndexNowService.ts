@@ -63,16 +63,19 @@ async function setUp(scope: ProjectScope) {
   return { domain: project.domain, key: saved.indexnowKey, created: true };
 }
 
-/**
- * Catches the setup mistakes engines would otherwise reject later: a missing
- * file, a page served in its place, or a redirect (engines want the file
- * itself). Anything inconclusive, like a bot wall or a timeout, returns null
- * and the submission goes ahead.
- */
-async function findKeyFileProblem(
-  host: string,
-  key: string,
-): Promise<string | null> {
+type KeyFileStatus =
+  | "found"
+  | "missing"
+  | "wrong_content"
+  | "redirects"
+  // Redirects to the same file on another host, like a bare domain that
+  // forwards everything to www. Its pages live on that other host.
+  | "moved"
+  | "unreachable"
+  // A bot wall, server error, timeout or stalled body: the file may be fine.
+  | "unknown";
+
+async function checkKeyFile(host: string, key: string): Promise<KeyFileStatus> {
   const url = `https://${host}/${key}.txt`;
   let response: Response;
   try {
@@ -81,23 +84,64 @@ async function findKeyFileProblem(
       redirect: "manual",
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
-  } catch {
-    return null;
+  } catch (error) {
+    return error instanceof DOMException && error.name === "TimeoutError"
+      ? "unknown"
+      : "unreachable";
   }
   if (!response.ok) {
     void response.body?.cancel().catch(() => {});
-    if (response.status === 404 || response.status === 410) {
-      return `No key file at the root of https://${host}. Upload it there, then try again.`;
-    }
+    if (response.status === 404 || response.status === 410) return "missing";
     if (response.status >= 300 && response.status < 400) {
-      return `The key file on https://${host} redirects. Upload it to https://${host} itself.`;
+      const target = URL.parse(response.headers.get("location") ?? "", url);
+      return target &&
+        target.hostname !== host &&
+        target.pathname === `/${key}.txt`
+        ? "moved"
+        : "redirects";
     }
-    return null;
+    return "unknown";
   }
-  // A body that stalls or drops mid-read is inconclusive, like a timeout.
   const body = await readBoundedText(response).catch(() => undefined);
-  if (body === undefined || body?.trim() === key) return null;
-  return `The key file on https://${host} should contain only the key.`;
+  if (body === undefined) return "unknown";
+  return body?.trim() === key ? "found" : "wrong_content";
+}
+
+/**
+ * Catches the setup mistakes engines would otherwise reject later: a missing
+ * file, a page served in its place, or a redirect (engines want the file
+ * itself). Anything inconclusive returns null and the submission goes ahead.
+ */
+async function findKeyFileProblem(
+  host: string,
+  key: string,
+): Promise<string | null> {
+  switch (await checkKeyFile(host, key)) {
+    case "missing":
+      return `No key file at the root of https://${host}. Upload it there, then try again.`;
+    case "wrong_content":
+      return `The key file on https://${host} should contain only the key.`;
+    case "redirects":
+    case "moved":
+      return `The key file on https://${host} redirects. Upload it to https://${host} itself.`;
+    default:
+      return null;
+  }
+}
+
+/** Where the key file is hosted, for the bare domain and its www host. */
+async function checkKeyFiles(scope: ProjectScope) {
+  const project = await loadProject(scope);
+  const domain = project.domain;
+  const key = project.indexnowKey;
+  if (!domain || !key) return { hosts: [] };
+  const hosts = await Promise.all(
+    [domain, `www.${domain}`].map(async (host) => ({
+      host,
+      status: await checkKeyFile(host, key),
+    })),
+  );
+  return { hosts };
 }
 
 function describeResponse(
@@ -226,5 +270,6 @@ async function submitUrls(scope: ProjectScope, urls: string[]) {
 export const IndexNowService = {
   getSetup,
   setUp,
+  checkKeyFiles,
   submitUrls,
 } as const;

@@ -11,6 +11,11 @@ export const getIndexNowSetup = createServerFn({ method: "GET" })
   .validator(indexNowProjectSchema)
   .handler(async ({ context }) => IndexNowService.getSetup(context));
 
+export const checkIndexNowKeyFiles = createServerFn({ method: "GET" })
+  .middleware(requireProjectContext)
+  .validator(indexNowProjectSchema)
+  .handler(async ({ context }) => IndexNowService.checkKeyFiles(context));
+
 export const setUpIndexNow = createServerFn({ method: "POST" })
   .middleware(requireProjectContext)
   .validator(indexNowProjectSchema)

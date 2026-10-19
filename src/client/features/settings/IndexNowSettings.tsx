@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import { Download } from "lucide-react";
+import { ChevronRight, CircleCheck, CircleX, Download } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { revalidateLogic } from "@tanstack/react-form";
@@ -8,8 +8,15 @@ import { useAppForm } from "@/client/components/form/useAppForm";
 import { CardShell } from "@/client/components/CardShell";
 import { QueryError } from "@/client/components/QueryState";
 import { SafeExternalLink } from "@/client/components/SafeExternalLink";
+import { CopyButton } from "@/client/components/CopyButton";
 import { Button } from "@/client/components/ui/button";
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/client/components/ui/collapsible";
+import {
+  checkIndexNowKeyFiles,
   getIndexNowSetup,
   setUpIndexNow,
   submitIndexNowUrls,
@@ -27,6 +34,27 @@ function splitUrls(value: string) {
     .map((line) => line.trim())
     .filter(Boolean);
 }
+
+const AGENT_PROMPT = "Submit the pages I just published to IndexNow.";
+
+type KeyFileHost = Awaited<
+  ReturnType<typeof checkIndexNowKeyFiles>
+>["hosts"][number];
+
+const KEY_FILE_LABELS: Record<KeyFileHost["status"], string> = {
+  found: "Found",
+  missing: "Not found",
+  wrong_content: "Should contain only the key",
+  redirects: "Redirects. The file must load at this address itself",
+  moved: "Redirects to another address",
+  unreachable: "Couldn't reach this address",
+  unknown: "Couldn't check right now",
+};
+
+// A host that forwards to another one or doesn't load has no pages to
+// submit, so it doesn't need the file.
+const isUnused = (host: KeyFileHost) =>
+  host.status === "moved" || host.status === "unreachable";
 
 const pluralUrls = (count: number) => `${count} URL${count === 1 ? "" : "s"}`;
 
@@ -58,6 +86,14 @@ export function IndexNowSettings({ projectId }: { projectId: string }) {
     onSuccess: (setup) => queryClient.setQueryData(setupQueryKey, setup),
   });
 
+  const keyFilesQueryKey = ["indexnow-key-files", projectId];
+  const hasKey = Boolean(setupQuery.data?.domain && setupQuery.data.key);
+  const keyFilesQuery = useQuery({
+    queryKey: keyFilesQueryKey,
+    queryFn: () => checkIndexNowKeyFiles({ data: { projectId } }),
+    enabled: hasKey,
+  });
+
   const submitMutation = useMutation({
     mutationFn: (urls: string[]) =>
       submitIndexNowUrls({ data: { projectId, urls } }),
@@ -86,6 +122,9 @@ export function IndexNowSettings({ projectId }: { projectId: string }) {
           `Skipped ${pluralUrls(result.skipped.length)} not on ${setupQuery.data?.domain}`,
         );
       }
+      if (failed.length > 0) {
+        void queryClient.invalidateQueries({ queryKey: keyFilesQueryKey });
+      }
       if (failed.length === 0 && sent > 0) formApi.reset();
     },
   });
@@ -112,8 +151,9 @@ export function IndexNowSettings({ projectId }: { projectId: string }) {
       <CardShell title="IndexNow">
         <div className="flex flex-1 flex-col gap-4 text-sm">
           <p className="text-muted-foreground">
-            Bing and other search engines recrawl the pages you submit sooner.
-            Google doesn't support IndexNow.
+            Tell Bing about new and updated pages as soon as you publish them,
+            instead of waiting for it to crawl your site. Bing also powers
+            DuckDuckGo and Yahoo results. Google doesn't use IndexNow.
           </p>
           {!domain ? (
             <p className="text-muted-foreground">
@@ -132,34 +172,20 @@ export function IndexNowSettings({ projectId }: { projectId: string }) {
             </div>
           ) : (
             <ol className="space-y-5">
-              <Step number={1} title="Download your key file">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-fit"
-                  onClick={() => downloadKeyFile(key)}
-                >
-                  <Download className="size-4" />
-                  Download key file
-                </Button>
-              </Step>
-              <Step number={2} title="Upload it to the root of your site">
-                <p className="text-muted-foreground">
-                  It should open at{" "}
-                  <SafeExternalLink
-                    url={`https://${domain}/${key}.txt`}
-                    label={`https://${domain}/${key}.txt`}
-                    className="inline-flex items-center gap-1 font-mono break-all text-foreground underline underline-offset-2"
-                  />
-                </p>
-                <p className="text-muted-foreground">
-                  If your pages are on www.{domain}, upload it there too.
-                </p>
-              </Step>
+              <KeyFileStep
+                domain={domain}
+                indexNowKey={key}
+                hosts={keyFilesQuery.data?.hosts}
+                isChecking={keyFilesQuery.isFetching}
+                onCheck={() => void keyFilesQuery.refetch()}
+              />
               <Step
-                number={3}
-                title="Submit pages you added, changed or removed"
+                number={2}
+                title="Submit pages when you publish or update them"
               >
+                <p className="text-muted-foreground">
+                  Paste just the pages that changed, not your whole site.
+                </p>
                 <form.AppForm>
                   <form.Form className="space-y-3">
                     <form.AppField name="urls">
@@ -178,12 +204,155 @@ export function IndexNowSettings({ projectId }: { projectId: string }) {
                     <form.SubmitButton>Submit to IndexNow</form.SubmitButton>
                   </form.Form>
                 </form.AppForm>
+                <div className="space-y-1 rounded-md bg-muted/50 p-3 text-muted-foreground">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span>
+                      Or ask your agent:{" "}
+                      <span className="text-foreground">"{AGENT_PROMPT}"</span>
+                    </span>
+                    <CopyButton
+                      value={AGENT_PROMPT}
+                      successMessage="Prompt copied"
+                      size="icon-xs"
+                      variant="ghost"
+                      label="Copy prompt"
+                    />
+                  </div>
+                  <p className="text-xs">
+                    If it can edit your site's code, it can add the key file
+                    too.
+                  </p>
+                </div>
               </Step>
             </ol>
           )}
         </div>
       </CardShell>
     </section>
+  );
+}
+
+function KeyFileStep({
+  domain,
+  indexNowKey,
+  hosts,
+  isChecking,
+  onCheck,
+}: {
+  domain: string;
+  indexNowKey: string;
+  hosts: KeyFileHost[] | undefined;
+  isChecking: boolean;
+  onCheck: () => void;
+}) {
+  const used = hosts?.filter((host) => !isUnused(host)) ?? [];
+  // Until the check answers, list both addresses without a status.
+  const shown: { host: string; status?: KeyFileHost["status"] }[] = !hosts
+    ? [{ host: domain }, { host: `www.${domain}` }]
+    : used.length > 0
+      ? used
+      : hosts;
+  const verified =
+    used.length > 0 && used.every((host) => host.status === "found");
+
+  return (
+    <Step
+      number={1}
+      title={
+        verified ? "Your key file is set up" : "Add this key file to your site"
+      }
+    >
+      {verified ? null : (
+        <>
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-fit"
+            onClick={() => downloadKeyFile(indexNowKey)}
+          >
+            <Download className="size-4" />
+            Download key file
+          </Button>
+          <p className="text-muted-foreground">
+            Put it at the root of your site, so it opens at:
+          </p>
+        </>
+      )}
+      <ul className="space-y-1">
+        {shown.map((host) => (
+          <li
+            key={host.host}
+            className="flex flex-wrap items-center gap-x-2 gap-y-0.5"
+          >
+            <SafeExternalLink
+              url={`https://${host.host}/${indexNowKey}.txt`}
+              label={`https://${host.host}/${indexNowKey}.txt`}
+              className="inline-flex items-center gap-1 font-mono text-xs break-all text-foreground underline underline-offset-2"
+            />
+            {host.status ? <KeyFileStatus status={host.status} /> : null}
+          </li>
+        ))}
+      </ul>
+      <Button
+        variant="outline"
+        size="xs"
+        className="w-fit"
+        pending={isChecking}
+        onClick={onCheck}
+      >
+        Check again
+      </Button>
+      {verified ? null : (
+        <Collapsible>
+          <CollapsibleTrigger className="group inline-flex items-center gap-1 text-muted-foreground hover:text-foreground">
+            <ChevronRight
+              className="size-3.5 transition-transform group-data-[panel-open]:rotate-90"
+              aria-hidden
+            />
+            How do I add a file to my site?
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
+              <li>
+                Site built from code: put the file in the folder your site
+                serves as-is, often called <code>public</code> or{" "}
+                <code>static</code>.
+              </li>
+              <li>
+                WordPress: upload it with your host's file manager or SFTP to
+                the folder that holds <code>wp-config.php</code>. SEO plugins
+                like Rank Math can also submit to IndexNow for you.
+              </li>
+              <li>
+                On Cloudflare: turn on Crawler Hints in Cloudflare's caching
+                settings and it submits changed pages to IndexNow for you.
+              </li>
+              <li>
+                Website builders like Webflow, Shopify, Squarespace and Wix
+                usually don't let you add files at the root. Check whether yours
+                already supports IndexNow.
+              </li>
+            </ul>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
+    </Step>
+  );
+}
+
+function KeyFileStatus({ status }: { status: KeyFileHost["status"] }) {
+  const problem =
+    status === "missing" ||
+    status === "wrong_content" ||
+    status === "redirects";
+  const Icon = status === "found" ? CircleCheck : problem ? CircleX : undefined;
+  return (
+    <span
+      className={`inline-flex items-center gap-1 text-xs ${status === "found" ? "text-success" : problem ? "text-destructive" : "text-muted-foreground"}`}
+    >
+      {Icon ? <Icon className="size-3.5" aria-hidden /> : null}
+      {KEY_FILE_LABELS[status]}
+    </span>
   );
 }
 

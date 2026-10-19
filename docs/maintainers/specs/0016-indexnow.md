@@ -16,7 +16,7 @@ Submitting is free. Any member of the organization can set up the key and submit
 
 ## Surfaces
 
-- **Settings → Integrations** has an IndexNow card. It explains which engines participate, creates the key, offers the key file for download, shows where to host it, and accepts a list of URLs to submit.
+- **Settings → Integrations** has an IndexNow card. It explains which engines participate, creates the key, offers the key file for download, and checks the file on the bare domain and its `www.` host, with a status for each. A host that redirects to the same file on the other host, or doesn't load, has no pages to submit and is left out. Once every remaining host serves the file, the setup instructions collapse. The card accepts a list of URLs to submit and suggests asking a connected agent to submit pages, or to add the key file when it can edit the site's code.
 - **MCP**: `submit_indexnow_urls` submits URLs for a project and creates the key on first use. When a key file is missing, the result names the file and its contents, so an agent with access to the site's code can add it and try again.
 
 ## Alternatives

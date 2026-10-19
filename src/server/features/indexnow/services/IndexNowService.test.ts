@@ -116,6 +116,13 @@ describe("IndexNowService.submitUrls", () => {
         headers: { location: "https://www.example.com/" },
       }),
     ],
+    [
+      "redirects to the same file on www",
+      new Response(null, {
+        status: 301,
+        headers: { location: `https://www.example.com/${KEY}.txt` },
+      }),
+    ],
   ])("doesn't submit when the key file %s", async (_case, keyFile) => {
     respond(keyFile);
 
@@ -169,5 +176,25 @@ describe("IndexNowService.submitUrls", () => {
     expect(submissions()).toHaveLength(1);
     expect(result.hosts[0]?.status).toBe("failed");
     expect(result.hosts[0]?.message).toContain("https://example.com");
+  });
+});
+
+describe("IndexNowService.checkKeyFiles", () => {
+  it("tells a host that forwards to www apart from a missing file", async () => {
+    fetchMock.mockImplementation(async (input) =>
+      input === `https://example.com/${KEY}.txt`
+        ? new Response(null, {
+            status: 301,
+            headers: { location: `https://www.example.com/${KEY}.txt` },
+          })
+        : new Response("Not found", { status: 404 }),
+    );
+
+    const result = await IndexNowService.checkKeyFiles(scope);
+
+    expect(result.hosts).toEqual([
+      { host: "example.com", status: "moved" },
+      { host: "www.example.com", status: "missing" },
+    ]);
   });
 });
