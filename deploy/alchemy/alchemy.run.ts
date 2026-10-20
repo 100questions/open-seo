@@ -80,20 +80,26 @@ const PROD_NAMES = {
   oauthKv: "OAUTH_KV",
 } as const;
 
-const makeResources = (stage: string) => {
+const makeResources = (stage: string, usesD1: boolean) => {
   const prod = stage === HOSTED_PROD_STAGE;
   // Prod adopts the LIVE resources; retain makes `alchemy destroy --stage
   // hosted-prod` (or an orphaning refactor) forget state instead of deleting
   // them.
   const keep = Alchemy.RemovalPolicy.retain(prod);
   return {
-    DB: Cloudflare.D1.Database("DB", {
-      name: prod ? PROD_NAMES.d1 : `open-seo-db-${stage}`,
-      // drizzle-generated SQL migrations; tracked in the same
-      // wrangler-compatible table prod already uses.
-      migrationsDir: "drizzle/sqlite",
-      migrationsTable: "d1_migrations",
-    }).pipe(keep),
+    // Postgres deploys never touch D1: no database, binding, or SQLite
+    // migrations. Dropping it forgets (never deletes) the retained prod D1.
+    ...(usesD1
+      ? {
+          DB: Cloudflare.D1.Database("DB", {
+            name: prod ? PROD_NAMES.d1 : `open-seo-db-${stage}`,
+            // drizzle-generated SQL migrations; tracked in the same
+            // wrangler-compatible table prod already uses.
+            migrationsDir: "drizzle/sqlite",
+            migrationsTable: "d1_migrations",
+          }).pipe(keep),
+        }
+      : {}),
     R2: Cloudflare.R2.Bucket("R2", {
       name: prod ? PROD_NAMES.r2 : `open-seo-r2-${stage}`,
       // Expire cached DataForSEO responses. Prod's lifecycle rules are
@@ -347,7 +353,7 @@ export default Alchemy.Stack(
 
     // Created once and bound into BOTH workers — they share the same
     // D1/KV/R2 (and prod Hyperdrive). OAUTH_KV stays app-worker-only.
-    const resources = makeResources(stage);
+    const resources = makeResources(stage, databaseProvider !== "postgres");
 
     // Aux worker: the site-audit engine (src/audit-worker.ts) — the
     // SiteAuditWorkflow orchestrator and the per-audit AuditScratchpad DO.
@@ -376,7 +382,7 @@ export default Alchemy.Stack(
         traces: { enabled: wrangler.observability?.traces?.enabled ?? false },
       },
       env: {
-        DB: resources.DB,
+        ...(resources.DB ? { DB: resources.DB } : {}),
         KV: resources.KV,
         R2: resources.R2,
         // Deliberately NOT ...dataEnv: this worker crawls and parses
