@@ -54,6 +54,12 @@ import {
   getSearchOpportunitiesTool,
 } from "@/server/mcp/tools/google-analytics-tools";
 import { createProjectTool } from "@/server/mcp/tools/create-project";
+import {
+  listGoogleAnalyticsPropertiesTool,
+  listSearchConsoleSitesTool,
+  setGoogleAnalyticsPropertyTool,
+  setSearchConsoleSiteTool,
+} from "@/server/mcp/tools/google-connection-tools";
 import { listProjectsTool } from "@/server/mcp/tools/list-projects";
 import {
   researchProjectWebsiteTool,
@@ -285,9 +291,13 @@ export function createOpenSeoMcpServer(
   register(listBusinessCategoriesTool);
   register(getLocalRankGridTool);
   register(getKeywordMetricsTool);
+  register(listSearchConsoleSitesTool);
+  register(setSearchConsoleSiteTool);
   register(getSearchConsolePerformanceTool);
   register(inspectUrlsTool);
   register(submitIndexNowUrlsTool);
+  register(listGoogleAnalyticsPropertiesTool);
+  register(setGoogleAnalyticsPropertyTool);
   register(getGoogleAnalyticsOrganicLandingPagesTool);
   register(getGoogleAnalyticsPagePerformanceTool);
   register(getGoogleAnalyticsKeyEventsTool);
