@@ -113,3 +113,26 @@ backward compatible so any of these is safe.
    ```
 
    The stack is identical, so this and the workflow can be used interchangeably.
+
+## Website (openseo.so)
+
+The marketing site in `web/` is a separate worker, `open-seo-landing`, deployed
+by the `Deploy website` workflow with wrangler rather than Alchemy. It runs
+automatically when a merge to `main` changes `web/**`, and can be dispatched by
+hand:
+
+```sh
+pnpm deploy:web
+```
+
+It uses the same `production` environment and Cloudflare token. The only extra
+value is the variable `WEBSITE_TURNSTILE_SITE_KEY`, the public site key of the
+"OpenSEO - Marketing Site" Turnstile widget; `vite build` inlines it and refuses
+to build without a real one. The worker's runtime secrets
+(`TURNSTILE_SECRET_KEY`, `DATAFORSEO_API_KEY`, `LOOPS_API_KEY`,
+`LOOPS_PRODUCT_UPDATES_LIST_ID`, `META_PIXEL_ID`, `META_CONVERSIONS_API_TOKEN`)
+are not part of the workflow: wrangler keeps a worker's existing secrets across
+deploys, so set or rotate them from `web/` with `wrangler secret put <NAME>`.
+
+To roll back, use Cloudflare dashboard > Workers > `open-seo-landing` >
+Deployments, or revert the commit on `main` (the revert redeploys on merge).
