@@ -16,6 +16,7 @@ import { Route as AuthErrorRouteImport } from './routes/auth-error'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as VerifyEmailRouteImport } from './routes/verify-email'
+import { Route as Char91DotwellKnownChar93HttpMessageSignaturesDirectoryRouteImport } from './routes/[.well-known]/http-message-signatures-directory'
 import { Route as Char91DotwellKnownChar93OpenaiAppsChallengeRouteImport } from './routes/[.well-known]/openai-apps-challenge'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppAiRouteImport } from './routes/_app/ai'
@@ -109,6 +110,12 @@ const VerifyEmailRoute = VerifyEmailRouteImport.update({
   path: '/verify-email',
   getParentRoute: () => rootRouteImport,
 } as any)
+const Char91DotwellKnownChar93HttpMessageSignaturesDirectoryRoute =
+  Char91DotwellKnownChar93HttpMessageSignaturesDirectoryRouteImport.update({
+    id: '/.well-known/http-message-signatures-directory',
+    path: '/.well-known/http-message-signatures-directory',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const Char91DotwellKnownChar93OpenaiAppsChallengeRoute =
   Char91DotwellKnownChar93OpenaiAppsChallengeRouteImport.update({
     id: '/.well-known/openai-apps-challenge',
@@ -439,6 +446,7 @@ export interface FileRoutesByFullPath {
   '/forgot-password': typeof ForgotPasswordRoute
   '/reset-password': typeof ResetPasswordRoute
   '/verify-email': typeof VerifyEmailRoute
+  '/.well-known/http-message-signatures-directory': typeof Char91DotwellKnownChar93HttpMessageSignaturesDirectoryRoute
   '/.well-known/openai-apps-challenge': typeof Char91DotwellKnownChar93OpenaiAppsChallengeRoute
   '/ai': typeof AppAiRoute
   '/billing': typeof AppBillingRoute
@@ -505,6 +513,7 @@ export interface FileRoutesByTo {
   '/forgot-password': typeof ForgotPasswordRoute
   '/reset-password': typeof ResetPasswordRoute
   '/verify-email': typeof VerifyEmailRoute
+  '/.well-known/http-message-signatures-directory': typeof Char91DotwellKnownChar93HttpMessageSignaturesDirectoryRoute
   '/.well-known/openai-apps-challenge': typeof Char91DotwellKnownChar93OpenaiAppsChallengeRoute
   '/ai': typeof AppAiRoute
   '/billing': typeof AppBillingRoute
@@ -568,6 +577,7 @@ export interface FileRoutesById {
   '/forgot-password': typeof ForgotPasswordRoute
   '/reset-password': typeof ResetPasswordRoute
   '/verify-email': typeof VerifyEmailRoute
+  '/.well-known/http-message-signatures-directory': typeof Char91DotwellKnownChar93HttpMessageSignaturesDirectoryRoute
   '/.well-known/openai-apps-challenge': typeof Char91DotwellKnownChar93OpenaiAppsChallengeRoute
   '/_app/ai': typeof AppAiRoute
   '/_app/billing': typeof AppBillingRoute
@@ -637,6 +647,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/reset-password'
     | '/verify-email'
+    | '/.well-known/http-message-signatures-directory'
     | '/.well-known/openai-apps-challenge'
     | '/ai'
     | '/billing'
@@ -703,6 +714,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/reset-password'
     | '/verify-email'
+    | '/.well-known/http-message-signatures-directory'
     | '/.well-known/openai-apps-challenge'
     | '/ai'
     | '/billing'
@@ -765,6 +777,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/reset-password'
     | '/verify-email'
+    | '/.well-known/http-message-signatures-directory'
     | '/.well-known/openai-apps-challenge'
     | '/_app/ai'
     | '/_app/billing'
@@ -835,6 +848,7 @@ export interface RootRouteChildren {
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   VerifyEmailRoute: typeof VerifyEmailRoute
+  Char91DotwellKnownChar93HttpMessageSignaturesDirectoryRoute: typeof Char91DotwellKnownChar93HttpMessageSignaturesDirectoryRoute
   Char91DotwellKnownChar93OpenaiAppsChallengeRoute: typeof Char91DotwellKnownChar93OpenaiAppsChallengeRoute
   AcceptInvitationIdRoute: typeof AcceptInvitationIdRoute
   ApiHealthRoute: typeof ApiHealthRoute
@@ -899,6 +913,13 @@ declare module '@tanstack/react-router' {
       path: '/verify-email'
       fullPath: '/verify-email'
       preLoaderRoute: typeof VerifyEmailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.well-known/http-message-signatures-directory': {
+      id: '/.well-known/http-message-signatures-directory'
+      path: '/.well-known/http-message-signatures-directory'
+      fullPath: '/.well-known/http-message-signatures-directory'
+      preLoaderRoute: typeof Char91DotwellKnownChar93HttpMessageSignaturesDirectoryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/.well-known/openai-apps-challenge': {
@@ -1523,6 +1544,8 @@ const rootRouteChildren: RootRouteChildren = {
   ForgotPasswordRoute: ForgotPasswordRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   VerifyEmailRoute: VerifyEmailRoute,
+  Char91DotwellKnownChar93HttpMessageSignaturesDirectoryRoute:
+    Char91DotwellKnownChar93HttpMessageSignaturesDirectoryRoute,
   Char91DotwellKnownChar93OpenaiAppsChallengeRoute:
     Char91DotwellKnownChar93OpenaiAppsChallengeRoute,
   AcceptInvitationIdRoute: AcceptInvitationIdRoute,

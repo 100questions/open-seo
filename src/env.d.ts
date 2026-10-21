@@ -39,6 +39,9 @@ declare namespace Cloudflare {
     // Encrypts saved Shopify crawler signatures. Kept separate from
     // BETTER_AUTH_SECRET so the audit worker never holds the auth secret.
     CRAWLER_ACCESS_SECRET?: string;
+    // Private Ed25519 JWK that signs site audit requests (Web Bot Auth). Hosted
+    // only; unset sends unsigned requests.
+    WEB_BOT_AUTH_JWK?: string;
     DATABASE_PROVIDER?: "d1" | "postgres";
     HYPERDRIVE?: {
       connectionString: string;

@@ -257,6 +257,7 @@ const dataEnv = {
   BYPASS_EMAIL_VERIFICATION: optionalVar("BYPASS_EMAIL_VERIFICATION"),
   BETTER_AUTH_SECRET: optionalSecret("BETTER_AUTH_SECRET"),
   CRAWLER_ACCESS_SECRET: optionalSecret("CRAWLER_ACCESS_SECRET"),
+  WEB_BOT_AUTH_JWK: optionalSecret("WEB_BOT_AUTH_JWK"),
   GOOGLE_CLIENT_ID: optionalVar("GOOGLE_CLIENT_ID"),
   GOOGLE_CLIENT_SECRET: optionalSecret("GOOGLE_CLIENT_SECRET"),
   GOOGLE_MAPS_API_KEY: optionalSecret("GOOGLE_MAPS_API_KEY"),
@@ -389,10 +390,12 @@ export default Alchemy.Stack(
         // Deliberately NOT ...dataEnv: this worker crawls and parses
         // attacker-influenced HTML, so it gets only the secrets its code
         // path reads — DataForSEO (Lighthouse), Autumn (metering), PostHog
-        // (capture), CRAWLER_ACCESS_SECRET (Shopify signatures). No
-        // auth/OAuth/Loops/Turnstile secrets.
+        // (capture), CRAWLER_ACCESS_SECRET (Shopify signatures),
+        // WEB_BOT_AUTH_JWK (request signing). No auth/OAuth/Loops/Turnstile
+        // secrets.
         BROWSER: Cloudflare.Browser(),
         CRAWLER_ACCESS_SECRET: dataEnv.CRAWLER_ACCESS_SECRET,
+        WEB_BOT_AUTH_JWK: dataEnv.WEB_BOT_AUTH_JWK,
         CONTEXT_API_KEY: dataEnv.CONTEXT_API_KEY,
         DATAFORSEO_API_KEY: dataEnv.DATAFORSEO_API_KEY,
         AUTUMN_SECRET_KEY: dataEnv.AUTUMN_SECRET_KEY,

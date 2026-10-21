@@ -34,6 +34,19 @@ deployment branches to `main`. Then add the following.
 | `META_CONVERSIONS_API_TOKEN` | Meta ad signup attribution (optional)                              |
 | `GDPR_ERASURE_SECRET`        | `scripts/erase-user-data.ts` endpoint (optional)                   |
 | `GOOGLE_MAPS_API_KEY`        | Local SEO basemap tiles (optional)                                 |
+| `WEB_BOT_AUTH_JWK`           | Private Ed25519 JWK that signs site audit requests (optional)      |
+
+`WEB_BOT_AUTH_JWK` is one line of JSON (the whitespace check below rejects a
+pretty-printed key). Generate it once with:
+
+```sh
+node -e 'crypto.subtle.generateKey({name:"Ed25519"},true,["sign","verify"]).then(k=>crypto.subtle.exportKey("jwk",k.privateKey)).then(j=>console.log(JSON.stringify({kty:j.kty,crv:j.crv,x:j.x,d:j.d})))'
+```
+
+The public half is served at `/.well-known/http-message-signatures-directory`,
+which is the URL to give Cloudflare's Verified Bots submission form. Rotating
+the key means re-submitting that form; Cloudflare matches signatures against
+the keys it has on file.
 
 Copy the current production values from the live worker before the first run.
 Alchemy replaces the worker's complete var and secret set on every deploy, so a
