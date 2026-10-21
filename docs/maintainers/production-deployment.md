@@ -33,6 +33,7 @@ deployment branches to `main`. Then add the following.
 | `CONTEXT_API_KEY`            | Site audit JavaScript rendering fallback (optional)                |
 | `META_CONVERSIONS_API_TOKEN` | Meta ad signup attribution (optional)                              |
 | `GDPR_ERASURE_SECRET`        | `scripts/erase-user-data.ts` endpoint (optional)                   |
+| `GOOGLE_MAPS_API_KEY`        | Local SEO basemap tiles (optional)                                 |
 
 Copy the current production values from the live worker before the first run.
 Alchemy replaces the worker's complete var and secret set on every deploy, so a

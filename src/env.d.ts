@@ -45,6 +45,7 @@ declare namespace Cloudflare {
     };
     GOOGLE_CLIENT_ID?: string;
     GOOGLE_CLIENT_SECRET?: string;
+    GOOGLE_MAPS_API_KEY?: string;
     LOOPS_API_KEY?: string;
     LOOPS_TRANSACTIONAL_VERIFY_EMAIL_ID?: string;
     LOOPS_TRANSACTIONAL_RESET_PASSWORD_ID?: string;
@@ -71,6 +72,12 @@ declare namespace Cloudflare {
 
     // DataForSEO API Basic auth value (base64 of login:password)
     DATAFORSEO_API_KEY: string;
+    LOCAL_RANK_WORKFLOW: Workflow<
+      Parameters<
+        // oxlint-disable-next-line typescript-eslint/consistent-type-imports -- preserve ambient Env augmentation
+        import("./server").LocalRankWorkflow["run"]
+      >[0]["payload"]
+    >;
     AI_VISIBILITY_WORKFLOW: Workflow<
       (
         | { runId: string }
