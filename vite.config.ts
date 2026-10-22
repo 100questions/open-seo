@@ -70,6 +70,29 @@ export default defineConfig(({ mode, command }) => {
       sourcemap: emitSourcemaps,
       outDir: emitSourcemaps ? "dist-sourcemaps" : "dist",
     },
+    esbuild: {
+      // Emit every chunk as pure ASCII: esbuild rewrites each non-ASCII
+      // character in string, regex, and identifier tokens as a \uXXXX escape
+      // (Vite's default is raw UTF-8). The parser decodes the escape, so
+      // "S\u00e3o Paulo" and "São Paulo" are the same string at runtime and
+      // nothing changes behaviour.
+      //
+      // Why: V8 keeps each module's source text alive for the life of the
+      // isolate, and a single character outside Latin-1 (a location name, a
+      // typographic dash in a tool description) makes it store the whole file
+      // at two bytes per character. The 7.8 MB main worker chunk occupied
+      // 15.5 MB of the 128 MB heap; escaped, it occupies 7.8 MB.
+      //
+      // Trade-offs: each escaped character costs six bytes instead of one to
+      // three, a few KB across the bundle and well compressed on the client.
+      // Built output shows \u2014 where a comment had an em dash, which only
+      // matters to someone reading dist/ directly. esbuild leaves comments
+      // verbatim, and one surviving character is enough to lose the whole
+      // saving, so vite-plugin-lean-worker-bundle.ts escapes the comment text
+      // of the worker chunks after this pass. Nothing fails if either step
+      // stops working; the isolate just quietly uses more memory.
+      charset: "ascii",
+    },
     plugins: [
       mcpWidgets(),
       leanWorkerBundle(),
