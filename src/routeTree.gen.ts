@@ -42,6 +42,7 @@ import { Route as AppSettingsOrganizationRouteImport } from './routes/_app/setti
 import { Route as AuthenticatedOnboardingIndexRouteImport } from './routes/_authenticated.onboarding.index'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiAutumnSplatRouteImport } from './routes/api/autumn/$'
+import { Route as ReportMapGrantCopyrightRouteImport } from './routes/report-map/$grant/copyright'
 import { Route as STokenIndexRouteImport } from './routes/s/$token/index'
 import { Route as STokenOgDotpngRouteImport } from './routes/s/$token/og[.]png'
 import { Route as STokenRawRouteImport } from './routes/s/$token/raw'
@@ -74,6 +75,7 @@ import { Route as AppPProjectIdReportsTemplatesRouteImport } from './routes/_app
 import { Route as AppPProjectIdSettingsIndexRouteImport } from './routes/_app/p/$projectId/settings/index'
 import { Route as AppPProjectIdSettingsContextRouteImport } from './routes/_app/p/$projectId/settings/context'
 import { Route as AppPProjectIdSettingsIntegrationsRouteImport } from './routes/_app/p/$projectId/settings/integrations'
+import { Route as ReportMapGrantZXYRouteImport } from './routes/report-map/$grant/$z/$x/$y'
 import { Route as AppPProjectIdAiVisibilityPromptsPromptIdRouteImport } from './routes/_app/p/$projectId/ai-visibility/prompts/$promptId'
 import { Route as AppPProjectIdAuditIssuesResultIdRouteImport } from './routes/_app/p/$projectId/audit/issues/$resultId'
 import { Route as ApiLocalSeoMapsProjectIdZXYRouteImport } from './routes/api/local-seo/maps/$projectId/$z/$x/$y'
@@ -242,6 +244,11 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
 const ApiAutumnSplatRoute = ApiAutumnSplatRouteImport.update({
   id: '/api/autumn/$',
   path: '/api/autumn/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportMapGrantCopyrightRoute = ReportMapGrantCopyrightRouteImport.update({
+  id: '/report-map/$grant/copyright',
+  path: '/report-map/$grant/copyright',
   getParentRoute: () => rootRouteImport,
 } as any)
 const STokenIndexRoute = STokenIndexRouteImport.update({
@@ -421,6 +428,11 @@ const AppPProjectIdSettingsIntegrationsRoute =
     path: '/integrations',
     getParentRoute: () => AppPProjectIdSettingsRoute,
   } as any)
+const ReportMapGrantZXYRoute = ReportMapGrantZXYRouteImport.update({
+  id: '/report-map/$grant/$z/$x/$y',
+  path: '/report-map/$grant/$z/$x/$y',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppPProjectIdAiVisibilityPromptsPromptIdRoute =
   AppPProjectIdAiVisibilityPromptsPromptIdRouteImport.update({
     id: '/prompts/$promptId',
@@ -469,6 +481,7 @@ export interface FileRoutesByFullPath {
   '/settings/organization': typeof AppSettingsOrganizationRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/autumn/$': typeof ApiAutumnSplatRoute
+  '/report-map/$grant/copyright': typeof ReportMapGrantCopyrightRoute
   '/s/$token/og.png': typeof STokenOgDotpngRoute
   '/s/$token/raw': typeof STokenRawRoute
   '/settings/': typeof AppSettingsIndexRoute
@@ -497,6 +510,7 @@ export interface FileRoutesByFullPath {
   '/p/$projectId/reports/templates': typeof AppPProjectIdReportsTemplatesRoute
   '/p/$projectId/settings/context': typeof AppPProjectIdSettingsContextRoute
   '/p/$projectId/settings/integrations': typeof AppPProjectIdSettingsIntegrationsRoute
+  '/report-map/$grant/$z/$x/$y': typeof ReportMapGrantZXYRoute
   '/p/$projectId/ai-visibility/': typeof AppPProjectIdAiVisibilityIndexRoute
   '/p/$projectId/audit/': typeof AppPProjectIdAuditIndexRoute
   '/p/$projectId/local-seo/': typeof AppPProjectIdLocalSeoIndexRoute
@@ -534,6 +548,7 @@ export interface FileRoutesByTo {
   '/settings/organization': typeof AppSettingsOrganizationRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/autumn/$': typeof ApiAutumnSplatRoute
+  '/report-map/$grant/copyright': typeof ReportMapGrantCopyrightRoute
   '/s/$token/og.png': typeof STokenOgDotpngRoute
   '/s/$token/raw': typeof STokenRawRoute
   '/settings': typeof AppSettingsIndexRoute
@@ -558,6 +573,7 @@ export interface FileRoutesByTo {
   '/p/$projectId/reports/templates': typeof AppPProjectIdReportsTemplatesRoute
   '/p/$projectId/settings/context': typeof AppPProjectIdSettingsContextRoute
   '/p/$projectId/settings/integrations': typeof AppPProjectIdSettingsIntegrationsRoute
+  '/report-map/$grant/$z/$x/$y': typeof ReportMapGrantZXYRoute
   '/p/$projectId/ai-visibility': typeof AppPProjectIdAiVisibilityIndexRoute
   '/p/$projectId/audit': typeof AppPProjectIdAuditIndexRoute
   '/p/$projectId/local-seo': typeof AppPProjectIdLocalSeoIndexRoute
@@ -601,6 +617,7 @@ export interface FileRoutesById {
   '/_app/settings/organization': typeof AppSettingsOrganizationRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/autumn/$': typeof ApiAutumnSplatRoute
+  '/report-map/$grant/copyright': typeof ReportMapGrantCopyrightRoute
   '/s/$token/og.png': typeof STokenOgDotpngRoute
   '/s/$token/raw': typeof STokenRawRoute
   '/_app/settings/': typeof AppSettingsIndexRoute
@@ -629,6 +646,7 @@ export interface FileRoutesById {
   '/_app/p/$projectId/reports/templates': typeof AppPProjectIdReportsTemplatesRoute
   '/_app/p/$projectId/settings/context': typeof AppPProjectIdSettingsContextRoute
   '/_app/p/$projectId/settings/integrations': typeof AppPProjectIdSettingsIntegrationsRoute
+  '/report-map/$grant/$z/$x/$y': typeof ReportMapGrantZXYRoute
   '/_app/p/$projectId/ai-visibility/': typeof AppPProjectIdAiVisibilityIndexRoute
   '/_app/p/$projectId/audit/': typeof AppPProjectIdAuditIndexRoute
   '/_app/p/$projectId/local-seo/': typeof AppPProjectIdLocalSeoIndexRoute
@@ -670,6 +688,7 @@ export interface FileRouteTypes {
     | '/settings/organization'
     | '/api/auth/$'
     | '/api/autumn/$'
+    | '/report-map/$grant/copyright'
     | '/s/$token/og.png'
     | '/s/$token/raw'
     | '/settings/'
@@ -698,6 +717,7 @@ export interface FileRouteTypes {
     | '/p/$projectId/reports/templates'
     | '/p/$projectId/settings/context'
     | '/p/$projectId/settings/integrations'
+    | '/report-map/$grant/$z/$x/$y'
     | '/p/$projectId/ai-visibility/'
     | '/p/$projectId/audit/'
     | '/p/$projectId/local-seo/'
@@ -735,6 +755,7 @@ export interface FileRouteTypes {
     | '/settings/organization'
     | '/api/auth/$'
     | '/api/autumn/$'
+    | '/report-map/$grant/copyright'
     | '/s/$token/og.png'
     | '/s/$token/raw'
     | '/settings'
@@ -759,6 +780,7 @@ export interface FileRouteTypes {
     | '/p/$projectId/reports/templates'
     | '/p/$projectId/settings/context'
     | '/p/$projectId/settings/integrations'
+    | '/report-map/$grant/$z/$x/$y'
     | '/p/$projectId/ai-visibility'
     | '/p/$projectId/audit'
     | '/p/$projectId/local-seo'
@@ -801,6 +823,7 @@ export interface FileRouteTypes {
     | '/_app/settings/organization'
     | '/api/auth/$'
     | '/api/autumn/$'
+    | '/report-map/$grant/copyright'
     | '/s/$token/og.png'
     | '/s/$token/raw'
     | '/_app/settings/'
@@ -829,6 +852,7 @@ export interface FileRouteTypes {
     | '/_app/p/$projectId/reports/templates'
     | '/_app/p/$projectId/settings/context'
     | '/_app/p/$projectId/settings/integrations'
+    | '/report-map/$grant/$z/$x/$y'
     | '/_app/p/$projectId/ai-visibility/'
     | '/_app/p/$projectId/audit/'
     | '/_app/p/$projectId/local-seo/'
@@ -856,11 +880,13 @@ export interface RootRouteChildren {
   RReportIdRoute: typeof RReportIdRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiAutumnSplatRoute: typeof ApiAutumnSplatRoute
+  ReportMapGrantCopyrightRoute: typeof ReportMapGrantCopyrightRoute
   STokenOgDotpngRoute: typeof STokenOgDotpngRoute
   STokenRawRoute: typeof STokenRawRoute
   STokenIndexRoute: typeof STokenIndexRoute
   ApiGa4OauthCallbackRoute: typeof ApiGa4OauthCallbackRoute
   ApiGscOauthCallbackRoute: typeof ApiGscOauthCallbackRoute
+  ReportMapGrantZXYRoute: typeof ReportMapGrantZXYRoute
   ApiLocalSeoMapsProjectIdZXYRoute: typeof ApiLocalSeoMapsProjectIdZXYRoute
 }
 
@@ -1097,6 +1123,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAutumnSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/report-map/$grant/copyright': {
+      id: '/report-map/$grant/copyright'
+      path: '/report-map/$grant/copyright'
+      fullPath: '/report-map/$grant/copyright'
+      preLoaderRoute: typeof ReportMapGrantCopyrightRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/s/$token/': {
       id: '/s/$token/'
       path: '/s/$token'
@@ -1320,6 +1353,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/p/$projectId/settings/integrations'
       preLoaderRoute: typeof AppPProjectIdSettingsIntegrationsRouteImport
       parentRoute: typeof AppPProjectIdSettingsRoute
+    }
+    '/report-map/$grant/$z/$x/$y': {
+      id: '/report-map/$grant/$z/$x/$y'
+      path: '/report-map/$grant/$z/$x/$y'
+      fullPath: '/report-map/$grant/$z/$x/$y'
+      preLoaderRoute: typeof ReportMapGrantZXYRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_app/p/$projectId/ai-visibility/prompts/$promptId': {
       id: '/_app/p/$projectId/ai-visibility/prompts/$promptId'
@@ -1554,11 +1594,13 @@ const rootRouteChildren: RootRouteChildren = {
   RReportIdRoute: RReportIdRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiAutumnSplatRoute: ApiAutumnSplatRoute,
+  ReportMapGrantCopyrightRoute: ReportMapGrantCopyrightRoute,
   STokenOgDotpngRoute: STokenOgDotpngRoute,
   STokenRawRoute: STokenRawRoute,
   STokenIndexRoute: STokenIndexRoute,
   ApiGa4OauthCallbackRoute: ApiGa4OauthCallbackRoute,
   ApiGscOauthCallbackRoute: ApiGscOauthCallbackRoute,
+  ReportMapGrantZXYRoute: ReportMapGrantZXYRoute,
   ApiLocalSeoMapsProjectIdZXYRoute: ApiLocalSeoMapsProjectIdZXYRoute,
 }
 export const routeTree = rootRouteImport

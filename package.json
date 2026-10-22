@@ -6,18 +6,21 @@
   "type": "module",
   "packageManager": "pnpm@10.30.1",
   "scripts": {
+    "predev": "pnpm build:report-widgets",
     "dev": "vite dev",
+    "predev:agents": "pnpm build:report-widgets",
     "dev:agents": "mkdir -p .logs && portless run vite dev 2>&1 | tee .logs/dev-server.log",
     "dev:agents:force": "mkdir -p .logs && portless --force run vite dev 2>&1 | tee .logs/dev-server.log",
-    "build": "vite build && tsc --noEmit",
+    "build": "pnpm build:report-widgets && vite build && tsc --noEmit",
+    "build:report-widgets": "tsc --noEmit -p tsconfig.report-widgets.json && vite build -c vite.report-widgets.config.ts",
     "lint": "oxlint . --type-aware",
     "lint:fix": "oxlint . --type-aware --fix",
     "preview": "npm run build && vite preview --port 3001",
     "deploy": "npm run db:migrate:prod && npm run build && wrangler deploy -c dist/open_seo_audit/wrangler.json && wrangler deploy",
-    "deploy:selfhost": "node scripts/selfhost-deploy-preflight.mjs && vite build --mode selfhost && tsc --noEmit && pnpm alchemy deploy deploy/alchemy/alchemy.run.ts --env-file .env.selfhost --stage selfhost",
+    "deploy:selfhost": "node scripts/selfhost-deploy-preflight.mjs && pnpm build:report-widgets && vite build --mode selfhost && tsc --noEmit && pnpm alchemy deploy deploy/alchemy/alchemy.run.ts --env-file .env.selfhost --stage selfhost",
     "deploy:prod": "gh workflow run deploy-production.yml --repo bensenescu/open-seo --ref main",
     "deploy:web": "gh workflow run deploy-website.yml --repo bensenescu/open-seo --ref main",
-    "deploy:preview": "vite build --mode preview && pnpm alchemy deploy deploy/alchemy/alchemy.run.ts --env-file .env.preview",
+    "deploy:preview": "pnpm build:report-widgets && vite build --mode preview && pnpm alchemy deploy deploy/alchemy/alchemy.run.ts --env-file .env.preview",
     "preview:access": "pnpm alchemy deploy deploy/alchemy/alchemy.preview-access.run.ts --env-file .env.preview --stage preview-access --adopt",
     "alchemy": "NODE_OPTIONS=\"$NODE_OPTIONS --experimental-strip-types\" alchemy",
     "destroy:preview": "pnpm alchemy destroy deploy/alchemy/alchemy.run.ts --env-file .env.preview",
@@ -55,7 +58,7 @@
     "repair:rank-locations": "tsx scripts/repair-rank-tracking-locations.ts",
     "seed:rank-tracking": "tsx scripts/seed-rank-tracking.ts",
     "seed:projects": "tsx scripts/seed-projects.ts",
-    "ci:check": "prettier --check . && knip && tsc --noEmit && tsc --noEmit -p tests/badseo/tsconfig.json && oxlint . --type-aware && pnpm sync-plugin-skills && test -z \"$(git status --porcelain -- plugins/openseo/skills)\""
+    "ci:check": "prettier --check . && knip && tsc --noEmit && tsc --noEmit -p tests/badseo/tsconfig.json && tsc --noEmit -p tsconfig.report-widgets.json && oxlint . --type-aware && pnpm sync-plugin-skills && test -z \"$(git status --porcelain -- plugins/openseo/skills)\""
   },
   "cloudflare": {
     "bindings": {

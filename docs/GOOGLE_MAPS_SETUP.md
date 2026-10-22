@@ -66,6 +66,15 @@ see Google Maps branding, copyright information, and grid markers. The map
 stays fitted to the grid. Click a completed point's marker to see the
 businesses ranking there.
 
+## Maps in Local SEO reports
+
+The same key draws the rank grid in Local SEO agent reports as a live map,
+including for anyone you share a report link with. Those readers are not
+signed in, so each report carries a link that loads tiles only for the area
+around its own grid and expires after a day. Each time someone opens a report
+with a map, it requests Google tiles. Without a key, reports show the grid as
+a drawing instead.
+
 ## Missing maps
 
 - **Google Maps is not configured:** set the server key and restart or
