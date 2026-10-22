@@ -22,7 +22,10 @@ jobs:
   deploy:
     # The public mirror must not deploy. Only main may use the production
     # environment's credentials.
-    if: github.repository == 'bensenescu/open-seo' && github.ref == 'refs/heads/main'
+    if: >-
+      (github.repository == 'bensenescu/open-seo' ||
+      github.repository == 'every-app/private-open-seo') &&
+      github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment:
