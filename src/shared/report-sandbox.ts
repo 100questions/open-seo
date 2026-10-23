@@ -125,9 +125,9 @@ function withPrintScript(html: string): string {
  * closed doctype gets the tag first of all, which is just as safe; a doctype
  * left unclosed swallows the tag entirely, and the widget simply never boots.
  */
-function withWidgetScript(html: string, nonce: string, mapGrant: string) {
-  // The grant is path-safe (see readMapGrant), so it needs no escaping here.
-  const tag = `<script nonce="${nonce}" src="${REPORT_WIDGETS_SRC}" data-map-grant="${mapGrant}" defer></script>`;
+function withWidgetScript(html: string, nonce: string, mapGrants: string[]) {
+  // Grants are path-safe (see readMapGrant), so they need no escaping here.
+  const tag = `<script nonce="${nonce}" src="${REPORT_WIDGETS_SRC}" data-map-grants="${mapGrants.join(" ")}" defer></script>`;
   const doctype = /^\s*<!doctype[^>]*>/i.exec(html);
   if (!doctype) return tag + html;
   const end = doctype.index + doctype[0].length;
@@ -147,16 +147,14 @@ export function reportDocumentResponse(
     print?: boolean;
     cacheControl: string;
     noindex?: boolean;
-    /** From createReportMapGrant: lets the rank-grid widget draw its map. */
-    mapGrant?: string | null;
+    /** From createReportMapGrants: let the rank-grid widget draw its maps. */
+    mapGrants?: string[];
   },
 ): Response {
   // The widget only loads where it has a map to draw.
-  const nonce = options.mapGrant ? crypto.randomUUID() : undefined;
-  const document =
-    nonce && options.mapGrant
-      ? withWidgetScript(html, nonce, options.mapGrant)
-      : html;
+  const mapGrants = options.mapGrants ?? [];
+  const nonce = mapGrants.length > 0 ? crypto.randomUUID() : undefined;
+  const document = nonce ? withWidgetScript(html, nonce, mapGrants) : html;
   return new Response(options.print ? withPrintScript(document) : document, {
     status: 200,
     headers: {

@@ -31,7 +31,7 @@ describe("report-sandbox", () => {
   it("injects the widget script under the response nonce", async () => {
     const response = reportDocumentResponse(
       '<!doctype html><html><body><script>alert(1)</script><script src="x" </body></html>',
-      { cacheControl: "no-store", mapGrant: "grant" },
+      { cacheControl: "no-store", mapGrants: ["grant"] },
     );
     const html = await response.text();
     const csp = response.headers.get("Content-Security-Policy") ?? "";
@@ -41,7 +41,7 @@ describe("report-sandbox", () => {
     expect(csp).toContain("sandbox allow-scripts");
     expect(
       html.startsWith(
-        `<!doctype html><script nonce="${nonce}" src="${REPORT_WIDGETS_SRC}" data-map-grant="grant" defer></script>`,
+        `<!doctype html><script nonce="${nonce}" src="${REPORT_WIDGETS_SRC}" data-map-grants="grant" defer></script>`,
       ),
     ).toBe(true);
     expect(html.split(`nonce="${nonce}"`).length).toBe(2);

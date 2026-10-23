@@ -8,9 +8,10 @@ import {
 } from "../shared/report-map";
 
 // The rank-grid report widget: turns a declarative block a skill wrote into
-// the Maps grid, the way local rank trackers draw it. The view is fixed on the
-// grid, like a rank tracker's report: no zoom, no panning. This bundle
-// is the only script a report may run (see src/shared/report-sandbox.ts), so
+// the Maps grid, the way local rank trackers draw it. The view opens fitted to
+// the grid; readers can zoom and pan within the area the map grant covers, and
+// a button brings the fitted view back. This bundle is the only script a
+// report may run (see src/shared/report-sandbox.ts), so
 // it reads data from the page and never evaluates anything found there.
 //
 // The block it looks for:
@@ -69,6 +70,8 @@ const STYLE = `
 .osw .leaflet-container{font-family:inherit}
 .osw-logo img{display:block;width:59px;height:18px}
 .osw .leaflet-control-attribution{font-size:11px}
+.osw-fit button{display:block;height:30px;padding:0 10px;border:0;border-radius:4px;background:#fff;color:#0a0a0a;font-family:inherit;font-size:12px;font-weight:600;line-height:30px;cursor:pointer}
+.osw-fit button:hover{background:#f4f4f4}
 .osw-fallback{display:none}
 @media print{.osw{display:none}.osw-fallback{display:block}}
 `;
@@ -204,9 +207,26 @@ function addGoogleAttribution(map: L.Map, grant: string) {
   refresh();
 }
 
+// A button under the zoom control that brings back the fitted view.
+function addFitControl(map: L.Map, fit: () => void) {
+  const FitControl = L.Control.extend({
+    onAdd: () => {
+      const bar = el("div", "leaflet-bar osw-fit");
+      const button = el("button", undefined, "Fit grid");
+      button.type = "button";
+      button.title = "Zoom to the whole grid";
+      L.DomEvent.disableClickPropagation(bar);
+      button.addEventListener("click", fit);
+      bar.appendChild(button);
+      return bar;
+    },
+  });
+  new FitControl({ position: "topleft" }).addTo(map);
+}
+
 function render(figure: HTMLElement, cfg: RankGridConfig, grant: string) {
-  // The proxy only serves tiles at the grant's zooms, inside its area. Both
-  // are sized for this widget's fitted view at any width.
+  // The proxy only serves tiles at the grant's zooms, in and just around its
+  // area, so the map's zoom and panning stay inside both.
   const granted = readMapGrant(grant);
   if (!granted) return;
   const wrap = el("div", "osw");
@@ -248,34 +268,37 @@ function render(figure: HTMLElement, cfg: RankGridConfig, grant: string) {
     return ranks.reduce((s, r) => s + r, 0) / ranks.length;
   };
 
+  const { area } = granted;
   const map = L.map(mapEl, {
     minZoom: granted.minZoom,
     maxZoom: granted.maxZoom,
-    zoomSnap: 0.5,
-    zoomControl: false,
-    dragging: false,
-    touchZoom: false,
-    doubleClickZoom: false,
-    scrollWheelZoom: false,
+    // Panning stops at the granted area: there are no tiles past it.
+    maxBounds: [
+      [area.south, area.west],
+      [area.north, area.east],
+    ],
+    maxBoundsViscosity: 1,
     boxZoom: false,
-    keyboard: false,
+    // The wheel scrolls the report until the reader clicks into the map.
+    scrollWheelZoom: false,
     attributionControl: true,
   });
   map.attributionControl.setPrefix(false);
+  map.on("focus", () => map.scrollWheelZoom.enable());
+  map.on("blur", () => map.scrollWheelZoom.disable());
   // The whole grid in the middle of the map with room around it. Refit when
-  // the map's size changes, so a narrow column never clips the outer points,
-  // and when a popup closes, since opening one may have panned the map.
-  const fit = () =>
+  // the map's size changes, so a narrow column never clips the outer points.
+  const fit = (animate = false) =>
     map.fitBounds(bounds, {
       padding: [REPORT_MAP_PADDING, REPORT_MAP_PADDING],
-      animate: false,
+      animate,
     });
   fit();
   new ResizeObserver(() => {
     map.invalidateSize({ animate: false });
     fit();
   }).observe(mapEl);
-  map.on("popupclose", fit);
+  addFitControl(map, () => fit(true));
   L.tileLayer(`/report-map/${grant}/{z}/{x}/{y}`).addTo(map);
   addGoogleAttribution(map, grant);
 
@@ -369,13 +392,46 @@ function render(figure: HTMLElement, cfg: RankGridConfig, grant: string) {
   draw(cfg.keywords.length > 1 ? ALL : cfg.keywords[0].keyword);
 }
 
+// The server signs one grant per grid, its area centered on the grid. Grids
+// close together can each sit inside the other's area, so the one centered
+// nearest this grid is the one signed for it.
+function grantFor(cfg: RankGridConfig, grants: string[]) {
+  const points = cfg.keywords.flatMap((k) => k.points);
+  if (points.length === 0) return undefined;
+  const lats = points.map((p) => p.lat);
+  const lngs = points.map((p) => p.lng);
+  const south = Math.min(...lats);
+  const north = Math.max(...lats);
+  const west = Math.min(...lngs);
+  const east = Math.max(...lngs);
+  let best: { grant: string; distance: number } | undefined;
+  for (const grant of grants) {
+    const area = readMapGrant(grant)?.area;
+    if (
+      !area ||
+      area.south > south ||
+      area.north < north ||
+      area.west > west ||
+      area.east < east
+    )
+      continue;
+    const distance =
+      Math.abs(area.south + area.north - south - north) +
+      Math.abs(area.west + area.east - west - east);
+    if (!best || distance < best.distance) best = { grant, distance };
+  }
+  return best?.grant;
+}
+
 // The tag is `defer`, so the document is parsed by now, and currentScript is
 // still this tag.
 function boot() {
   const script = document.currentScript;
-  const grant =
-    script instanceof HTMLScriptElement ? script.dataset.mapGrant : undefined;
-  if (!grant) return;
+  const grants =
+    script instanceof HTMLScriptElement
+      ? (script.dataset.mapGrants ?? "").split(" ").filter(Boolean)
+      : [];
+  if (grants.length === 0) return;
   const figures = document.querySelectorAll<HTMLElement>(
     'figure[data-widget="rank-grid"]',
   );
@@ -386,7 +442,8 @@ function boot() {
   for (const figure of figures) {
     const data = figure.querySelector('script[type="application/json"]');
     const cfg = data?.textContent ? parseConfig(data.textContent) : null;
-    if (!cfg) continue;
+    const grant = cfg ? grantFor(cfg, grants) : undefined;
+    if (!cfg || !grant) continue;
     render(figure, cfg, grant);
   }
 }

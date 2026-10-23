@@ -1,11 +1,11 @@
 // The map behind the rank-grid report widget: Google Maps tiles, proxied
 // through /report-map so no key reaches a reader. A report is sandboxed and
 // may be read by anyone holding a share link, so the proxy cannot ask who is
-// reading. Instead the document response carries a signed grant naming the
-// one area the report's grid covers and the few zoom levels a fitted view of
-// it can land on, and the proxy serves those tiles only. Shared by the server,
-// which signs and checks grants, and by the widget, which fits its fixed view
-// inside the grant.
+// reading. Instead the document response carries a signed grant per rank grid,
+// naming the area around that grid and the few zoom levels either side of a
+// fitted view of it, and the proxy serves those tiles only. Shared by the
+// server, which signs and checks grants, and by the widget, which keeps its
+// zoom and panning inside the grant.
 
 /** The closest zoom the map offers: street level, not building level. */
 export const REPORT_MAP_MAX_ZOOM = 18;

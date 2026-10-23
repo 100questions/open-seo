@@ -19,11 +19,21 @@ import {
 // copied out of a report stops working.
 const GRANT_TTL_SECONDS = 24 * 60 * 60;
 
-// Around the grid, enough to fill the widget's fixed view on a wide screen:
-// one and a half times the grid's size on every side, and never less than
-// ~3 km.
+// Around the grid, room to pan: one and a half times the grid's size on every
+// side, and never less than ~3 km. The widget keeps its view inside this area.
 const PAD_GRID_SPANS = 1.5;
 const MIN_PAD_DEGREES = 0.03;
+
+// How far a reader can zoom from the fitted view: out far enough to place the
+// grid in its town, in close enough to read street names around a point.
+const ZOOM_OUT_LEVELS = 2;
+const ZOOM_IN_LEVELS = 2;
+
+// Zoomed out, the view can be bigger than the area, so tiles within this many
+// tiles of it are served too: half the widest view is about two tiles, with
+// room to spare. The widget keeps its view inside the area wherever the view
+// fits in it, so only zoomed-out views ever reach into this margin.
+const MARGIN_TILES = 4;
 
 // The space the widget fits the grid into, from a phone to a wide report
 // column. The height is fixed by the widget's CSS.
@@ -83,8 +93,9 @@ function widgetBlocks(html: string) {
   return blocks;
 }
 
-function gridPoints(html: string) {
-  const points: Array<{ lat: number; lng: number }> = [];
+// The points of each rank grid in the report, one list per figure.
+function gridsInReport(html: string) {
+  const grids: Array<Array<{ lat: number; lng: number }>> = [];
   for (const block of widgetBlocks(html)) {
     let data: unknown;
     try {
@@ -94,9 +105,10 @@ function gridPoints(html: string) {
     }
     const parsed = widgetPointsSchema.safeParse(data);
     if (!parsed.success) continue;
-    for (const keyword of parsed.data.keywords) points.push(...keyword.points);
+    const points = parsed.data.keywords.flatMap((keyword) => keyword.points);
+    if (points.length > 0) grids.push(points);
   }
-  return points;
+  return grids;
 }
 
 function mapGrantScope(
@@ -110,6 +122,7 @@ function mapGrantScope(
   const east = Math.max(...lngs);
   const padLat = Math.max((north - south) * PAD_GRID_SPANS, MIN_PAD_DEGREES);
   const padLng = Math.max((east - west) * PAD_GRID_SPANS, MIN_PAD_DEGREES);
+  const fitted = fittedZoomRange({ south, west, north, east });
   return {
     area: {
       south: south - padLat,
@@ -117,7 +130,8 @@ function mapGrantScope(
       north: north + padLat,
       east: east + padLng,
     },
-    ...fittedZoomRange({ south, west, north, east }),
+    minZoom: Math.max(0, fitted.minZoom - ZOOM_OUT_LEVELS),
+    maxZoom: Math.min(REPORT_MAP_MAX_ZOOM, fitted.maxZoom + ZOOM_IN_LEVELS),
   };
 }
 
@@ -129,8 +143,7 @@ function mercatorY(lat: number) {
 
 /**
  * The tile zooms the widget can land on when it fits the grid into its view
- * (Leaflet's fitBounds), across every view size it can have. The widget's view
- * is fixed, so these few levels are all it ever loads.
+ * (Leaflet's fitBounds), across every view size it can have.
  */
 function fittedZoomRange(grid: MapArea) {
   // The grid's size in pixels at zoom 0, where the world is 256 across.
@@ -171,24 +184,34 @@ async function mapsKey() {
   return (await getOptionalEnvValue("GOOGLE_MAPS_API_KEY"))?.trim() || null;
 }
 
-/** A grant for the area the report's rank grids cover, or null for none. */
-export async function createReportMapGrant(html: string) {
+/**
+ * One grant per distinct rank grid in the report, empty for none. Each grid
+ * gets its own: a report covering several locations would otherwise share one
+ * grant sized to all of them, and its zooms would hold every map far out.
+ */
+export async function createReportMapGrants(html: string) {
   const apiKey = await mapsKey();
-  if (!apiKey) return null;
-  const points = gridPoints(html);
-  if (points.length === 0) return null;
-  const scope = mapGrantScope(points);
+  if (!apiKey) return [];
   const expiresAt = Math.floor(Date.now() / 1000) + GRANT_TTL_SECONDS;
-  const payload = [
-    scope.area.south.toFixed(5),
-    scope.area.west.toFixed(5),
-    scope.area.north.toFixed(5),
-    scope.area.east.toFixed(5),
-    scope.minZoom,
-    scope.maxZoom,
-    expiresAt,
-  ].join("~");
-  return `${payload}~${await sign(payload, apiKey)}`;
+  const payloads = new Set(
+    gridsInReport(html).map((points) => {
+      const scope = mapGrantScope(points);
+      return [
+        scope.area.south.toFixed(5),
+        scope.area.west.toFixed(5),
+        scope.area.north.toFixed(5),
+        scope.area.east.toFixed(5),
+        scope.minZoom,
+        scope.maxZoom,
+        expiresAt,
+      ].join("~");
+    }),
+  );
+  return Promise.all(
+    [...payloads].map(
+      async (payload) => `${payload}~${await sign(payload, apiKey)}`,
+    ),
+  );
 }
 
 /** What a grant covers, or null when it is forged or expired. */
@@ -224,16 +247,19 @@ function tileLatitude(y: number, zoom: number) {
   return (180 / Math.PI) * Math.atan(Math.sinh(n));
 }
 
-/** Whether a grant covers a web-mercator tile: one of its zooms, in its area. */
+/**
+ * Whether a grant covers a web-mercator tile: one of its zooms, in its area or
+ * within MARGIN_TILES of it.
+ */
 export function grantCoversTile(
   tile: { z: number; x: number; y: number },
   { area, minZoom, maxZoom }: MapGrantScope,
 ) {
   if (tile.z < minZoom || tile.z > maxZoom) return false;
-  const west = (tile.x / 2 ** tile.z) * 360 - 180;
-  const east = ((tile.x + 1) / 2 ** tile.z) * 360 - 180;
-  const north = tileLatitude(tile.y, tile.z);
-  const south = tileLatitude(tile.y + 1, tile.z);
+  const west = ((tile.x - MARGIN_TILES) / 2 ** tile.z) * 360 - 180;
+  const east = ((tile.x + 1 + MARGIN_TILES) / 2 ** tile.z) * 360 - 180;
+  const north = tileLatitude(tile.y - MARGIN_TILES, tile.z);
+  const south = tileLatitude(tile.y + 1 + MARGIN_TILES, tile.z);
   return (
     west < area.east &&
     east > area.west &&

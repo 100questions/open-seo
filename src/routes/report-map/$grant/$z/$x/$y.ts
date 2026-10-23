@@ -10,7 +10,7 @@ import { REPORT_MAP_MAX_ZOOM } from "@/shared/report-map";
 // Map tiles for the rank-grid report widget. No session: a shared report's
 // reader has none, and the sandboxed frame sends no cookies anyway. The
 // signed grant in the path is the authorization, and it only covers the area
-// around the report's grid at the zooms its fitted view uses (see
+// around the report's grid at a few zooms either side of its fitted view (see
 // reportMapGrant.ts).
 //
 // A raw-Response route with no `component`, so it stays out of the client
