@@ -52,6 +52,7 @@ function OAuthConsentPage() {
     "authorize" | "cancel" | null
   >(null);
   const [error, setError] = useState<string | null>(null);
+  const [appRedirectUrl, setAppRedirectUrl] = useState<string | null>(null);
 
   useEffect(() => {
     captureClientEvent("mcp:consent_viewed");
@@ -99,7 +100,10 @@ function OAuthConsentPage() {
         setError(data.error ?? "Unable to complete authorization.");
       } else if (data.redirectTo) {
         window.location.assign(data.redirectTo);
-        return;
+        // An app link like claude:// hands off to the desktop app and leaves
+        // this page in place, so offer a link in case the handoff was missed.
+        if (/^https?:/i.test(data.redirectTo)) return;
+        setAppRedirectUrl(data.redirectTo);
       } else {
         setError("Authorization response did not include a redirect URL.");
       }
@@ -208,27 +212,42 @@ function OAuthConsentPage() {
           </Alert>
         ) : null}
 
-        <div className="mt-8 flex gap-2">
-          <Button
-            type="button"
-            variant="ghost"
-            className="flex-1"
-            pending={pendingAction === "cancel"}
-            disabled={pendingAction !== null}
-            onClick={() => void respond(false)}
-          >
-            {pendingAction === "cancel" ? "Canceling..." : "Cancel"}
-          </Button>
-          <Button
-            type="button"
-            className="flex-1"
-            pending={pendingAction === "authorize"}
-            disabled={pendingAction !== null || switchWorkspace.isPending}
-            onClick={() => void respond(true)}
-          >
-            {pendingAction === "authorize" ? "Authorizing..." : "Authorize"}
-          </Button>
-        </div>
+        {appRedirectUrl ? (
+          <div className="mt-8 text-center">
+            <p className="text-sm text-muted-foreground">
+              Opening your app... Didn't open?
+            </p>
+            <Button
+              className="mt-3 w-full"
+              nativeButton={false}
+              render={<a href={appRedirectUrl} />}
+            >
+              Open app
+            </Button>
+          </div>
+        ) : (
+          <div className="mt-8 flex gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              className="flex-1"
+              pending={pendingAction === "cancel"}
+              disabled={pendingAction !== null}
+              onClick={() => void respond(false)}
+            >
+              {pendingAction === "cancel" ? "Canceling..." : "Cancel"}
+            </Button>
+            <Button
+              type="button"
+              className="flex-1"
+              pending={pendingAction === "authorize"}
+              disabled={pendingAction !== null || switchWorkspace.isPending}
+              onClick={() => void respond(true)}
+            >
+              {pendingAction === "authorize" ? "Authorizing..." : "Authorize"}
+            </Button>
+          </div>
+        )}
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
           You can disconnect it anytime in Settings under Connected agents.
