@@ -1,7 +1,10 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { Check, Database, KeyRound, User } from "lucide-react";
+import { Building2, Check, Database, KeyRound, User } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useSession } from "@/lib/auth-client";
+import { clearLastProjectId } from "@/client/lib/active-project";
+import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import { captureClientEvent } from "@/client/lib/posthog";
 import { Alert, AlertDescription } from "@/client/components/ui/alert";
 import { Button } from "@/client/components/ui/button";
@@ -11,6 +14,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/client/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/client/components/ui/select";
+import { organizationContextQueryOptions } from "@/client/features/team/organizationQueries";
+import { switchOrganization } from "@/serverFunctions/organization";
 
 export const Route = createFileRoute("/_authenticated/oauth-consent")({
   component: OAuthConsentPage,
@@ -25,12 +37,17 @@ const SCOPES = [
   {
     icon: KeyRound,
     label: "Act on your behalf via MCP",
-    description: "Run tools and write results back to your organization.",
+    description: "Run tools and save results in this workspace.",
   },
 ];
 
 function OAuthConsentPage() {
   const { data: session } = useSession();
+  const queryClient = useQueryClient();
+  const { data: organizationContext } = useQuery(
+    organizationContextQueryOptions(),
+  );
+  const organizations = organizationContext?.organizations ?? [];
   const [pendingAction, setPendingAction] = useState<
     "authorize" | "cancel" | null
   >(null);
@@ -39,6 +56,21 @@ function OAuthConsentPage() {
   useEffect(() => {
     captureClientEvent("mcp:consent_viewed");
   }, []);
+
+  // The grant binds to the session's active workspace when Authorize is
+  // clicked, so switching here is the same switch as the account menu's and
+  // carries over to the app.
+  const switchWorkspace = useMutation({
+    mutationFn: (organizationId: string) =>
+      switchOrganization({ data: { organizationId } }),
+    onMutate: () => setError(null),
+    onSuccess: async () => {
+      // The remembered project belongs to the old workspace.
+      clearLastProjectId();
+      await queryClient.invalidateQueries(organizationContextQueryOptions());
+    },
+    onError: (switchError) => setError(getStandardErrorMessage(switchError)),
+  });
 
   async function respond(accept: boolean) {
     setError(null);
@@ -103,6 +135,53 @@ function OAuthConsentPage() {
             <div className="font-medium">{session?.user.email}</div>
           </div>
         </div>
+        {/* The grant is bound to the active workspace. Which one only
+            matters to people in more than one, the same rule as the account
+            menu switcher and the Settings organization columns. */}
+        {organizations.length > 1 ? (
+          <div className="mt-2 flex items-center gap-3 rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm">
+            <div className="flex size-7 items-center justify-center rounded-full bg-muted">
+              <Building2 className="size-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-xs text-muted-foreground">Workspace</div>
+              <Select
+                items={organizations.map((organization) => ({
+                  value: organization.organizationId,
+                  label: organization.organizationName,
+                }))}
+                value={organizationContext?.organizationId ?? null}
+                disabled={switchWorkspace.isPending || pendingAction !== null}
+                onValueChange={(organizationId) => {
+                  if (
+                    organizationId &&
+                    organizationId !== organizationContext?.organizationId
+                  ) {
+                    switchWorkspace.mutate(organizationId);
+                  }
+                }}
+              >
+                <SelectTrigger
+                  size="sm"
+                  aria-label="Workspace"
+                  className="mt-0.5 w-full font-medium"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {organizations.map((organization) => (
+                    <SelectItem
+                      key={organization.organizationId}
+                      value={organization.organizationId}
+                    >
+                      {organization.organizationName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        ) : null}
 
         <div className="mt-6">
           <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -144,7 +223,7 @@ function OAuthConsentPage() {
             type="button"
             className="flex-1"
             pending={pendingAction === "authorize"}
-            disabled={pendingAction !== null}
+            disabled={pendingAction !== null || switchWorkspace.isPending}
             onClick={() => void respond(true)}
           >
             {pendingAction === "authorize" ? "Authorizing..." : "Authorize"}
@@ -152,7 +231,7 @@ function OAuthConsentPage() {
         </div>
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
-          You can revoke access at any time in Settings.
+          You can disconnect it anytime in Settings under Connected agents.
         </p>
       </CardContent>
     </Card>

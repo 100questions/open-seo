@@ -305,9 +305,10 @@ async function handleOAuthConsentResponse(
     );
   }
 
-  // organizationId is only the fallback context for tools with no project
-  // argument; the hosted transport re-resolves it and stamps orgScope per
-  // request, so one authorization follows the user across every organization.
+  // The grant is bound to the organization active at consent: every /mcp
+  // request re-checks the user's membership in exactly this org and 401s once
+  // it is gone (transport.ts). The same id goes into the grant metadata below,
+  // which the Settings "Connected agents" list reads to name the workspace.
   const props = createWorkersOAuthMcpProps({
     userId: context.userId,
     userEmail: context.userEmail,
@@ -350,11 +351,26 @@ async function handleOAuthConsentResponse(
   return jsonResponse({ redirectTo });
 }
 
+// The provider sets OAUTH_PROVIDER on the env it hands the default handler,
+// but `import { env } from "cloudflare:workers"` is a different object, so
+// server functions (which run inside appFetch) cannot read it there. The
+// helpers are stateless wrappers over the OAUTH_KV binding, so one module-level
+// reference serves every request.
+let oauthHelpers: OAuthHelpers | undefined;
+
+export function getCapturedOAuthHelpers() {
+  if (!oauthHelpers) {
+    throw new Error("OAuth provider helpers are unavailable");
+  }
+  return oauthHelpers;
+}
+
 function createDefaultHandler(
   appFetch: AppFetch,
 ): ExportedHandlerWithFetch<OpenSeoOAuthEnv> {
   return {
     async fetch(request, env) {
+      oauthHelpers = env.OAUTH_PROVIDER;
       const url = new URL(request.url);
 
       if (url.pathname === OAUTH_AUTHORIZE_PATH) {

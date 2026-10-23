@@ -151,21 +151,6 @@ export async function resolveActiveHostedOrganization(
   return created;
 }
 
-// Same as resolveActiveHostedOrganization, but never mints a default
-// organization. Used by API-key authentication: a user with no memberships has
-// no org to bill or authorize, so credentials should be rejected instead of
-// silently spinning up a new workspace.
-export async function resolveExistingActiveHostedOrganization(
-  userId: string,
-): Promise<ActiveHostedOrganization | null> {
-  const existing = await findExistingActiveOrganization(userId);
-  if (!existing) {
-    return null;
-  }
-  await repairDubReferralPin(userId);
-  return existing;
-}
-
 // Sign-in (session-create hook) variant: same resolution, except a user with
 // no memberships and a pending invitation gets NO auto-minted personal
 // organization — someone who signs up from an invite link should end up in
