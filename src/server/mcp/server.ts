@@ -17,6 +17,7 @@ import {
 import {
   type CallToolResult,
   McpServer,
+  type StandardSchemaWithJSON,
   type ToolAnnotations,
 } from "@modelcontextprotocol/server";
 import { z } from "zod";
@@ -26,6 +27,7 @@ import {
   type ToolContext,
 } from "@/server/mcp/context";
 import { objectSchema } from "@/server/mcp/output-schemas";
+import { memoizeJsonSchema } from "@/server/mcp/json-schema-memo";
 import { instrumentMcpToolHandler } from "@/server/mcp/instrumentation";
 import { submitIndexNowUrlsTool } from "@/server/mcp/tools/submit-indexnow-urls";
 import { getBacklinksOverviewTool } from "@/server/mcp/tools/get-backlinks-overview";
@@ -151,32 +153,69 @@ type OpenSeoToolDefinition<Input extends ToolSchema> = {
   ) => CallToolResult | Promise<CallToolResult>;
 };
 
+const widgetToolName = z.enum(WidgetTool);
+
+type ToolSchemas = {
+  // Handed to the SDK, which converts them to JSON Schema for tools/list.
+  inputSchema: StandardSchemaWithJSON;
+  outputSchema: StandardSchemaWithJSON | undefined;
+  // The same output schema as zod, for the handler instrumentation.
+  outputZod: z.ZodType | undefined;
+};
+
+// Built once per isolate and shared by every per-request server (see
+// transport.ts) so the SDK's JSON Schema conversion is paid once per tool, not
+// once per request. The widget-source tools get a second entry for clients
+// without MCP Apps support, which see an output schema without resultId.
+const toolSchemaCache = new Map<string, ToolSchemas>();
+
+function toolSchemas(
+  tool: {
+    name: string;
+    config: { inputSchema: ToolSchema; outputSchema?: ToolSchema };
+  },
+  omitResultId: boolean,
+): ToolSchemas {
+  const key = omitResultId ? `${tool.name}/no-result-id` : tool.name;
+  let schemas = toolSchemaCache.get(key);
+  if (!schemas) {
+    // Output objects must allow added fields, including nested objects. The
+    // tools/list contract test checks every registered tool for cached-client
+    // compatibility; input schemas keep their existing validation rules.
+    const schema = objectSchema(tool.config.outputSchema);
+    const outputZod =
+      omitResultId && schema instanceof z.ZodObject
+        ? schema.omit({ resultId: true })
+        : schema;
+    schemas = {
+      inputSchema: memoizeJsonSchema(objectSchema(tool.config.inputSchema)),
+      outputSchema: outputZod && memoizeJsonSchema(outputZod),
+      outputZod,
+    };
+    toolSchemaCache.set(key, schemas);
+  }
+  return schemas;
+}
+
 function registerOpenSeoTool<Input extends ToolSchema>(
   server: McpServer,
   tool: OpenSeoToolDefinition<Input>,
   authProps: McpProps,
   supportsApps: boolean,
 ) {
-  // Output objects must allow added fields, including nested objects. The
-  // tools/list contract test checks every registered tool for cached-client
-  // compatibility; input schemas keep their existing validation rules.
-  const widgetSource = z.enum(WidgetTool).safeParse(tool.name);
-  const schema = objectSchema(tool.config.outputSchema);
-  const outputSchema =
-    !supportsApps && widgetSource.success && schema instanceof z.ZodObject
-      ? schema.omit({ resultId: true })
-      : schema;
+  const widgetSource = widgetToolName.safeParse(tool.name);
+  const schemas = toolSchemas(tool, !supportsApps && widgetSource.success);
   const handler = instrumentMcpToolHandler(
     tool.name,
-    outputSchema,
+    schemas.outputZod,
     tool.handler,
   );
   server.registerTool(
     tool.name,
     {
       ...tool.config,
-      inputSchema: objectSchema(tool.config.inputSchema),
-      outputSchema,
+      inputSchema: schemas.inputSchema,
+      outputSchema: schemas.outputSchema,
     },
     async (args, context) => {
       const toolContext = createMcpToolContext(context, authProps);
