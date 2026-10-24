@@ -490,6 +490,13 @@ export default Alchemy.Stack(
           simple: { limit: 5000, period: 60 },
         }),
 
+        // Per-IP throttle for email sign-in (see src/routes/api/auth/$.ts).
+        // Generous enough that no real person or shared office IP hits it.
+        AUTH_RATE_LIMIT: Cloudflare.RateLimit("AUTH_RATE_LIMIT", {
+          namespaceId: 1002,
+          simple: { limit: 20, period: 60 },
+        }),
+
         // Durable Objects (the chat agents; the audit scratchpad lives
         // privately in the open-seo-audit worker). Alchemy backs new DO
         // classes with SQLite storage; wrangler.jsonc's `migrations` only
