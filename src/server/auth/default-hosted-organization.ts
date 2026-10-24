@@ -1,6 +1,6 @@
 import { AuthRepository } from "@/server/auth/repositories/AuthRepository";
 import { markDubReferredOrganization } from "@/server/referrals/dub";
-import { slugify, toHex } from "./org-slug";
+import { toHex } from "./org-slug";
 
 type HostedUser = {
   id: string;
@@ -23,11 +23,12 @@ function getDefaultHostedOrganizationName(user: HostedUser) {
   return `${name}'s organization`;
 }
 
+// Keyed on the user id alone, never the editable display name: the slug is
+// unique, so a second default organization for the same user fails. A user
+// who hands their org to someone else and leaves would otherwise get a fresh
+// org, and a fresh free-plan credit grant, on every sign-in after a rename.
 function getDefaultHostedOrganizationSlug(user: HostedUser) {
-  const slugSource =
-    user.name?.trim() || user.email.split("@")[0] || "organization";
-  const suffix = toHex(user.id).slice(0, 12);
-  return `${slugify(slugSource)}-${suffix}`;
+  return `org-${toHex(user.id)}`;
 }
 
 async function getHostedUser(userId: string) {
