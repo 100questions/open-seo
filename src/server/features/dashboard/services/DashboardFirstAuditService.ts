@@ -4,7 +4,7 @@ import { AuditService } from "@/server/features/audit/services/AuditService";
 import { AuditRepository } from "@/server/features/audit/repositories/AuditRepository";
 import { DataRefreshClaimRepository } from "../repositories/DataRefreshClaimRepository";
 import { buildCacheKey } from "@/server/lib/r2-cache";
-import { asAppError } from "@/server/lib/errors";
+import { asAppError, describeError } from "@/server/lib/errors";
 import { captureServerEvent } from "@/server/lib/posthog";
 import type { BillingCustomerContext } from "@/server/billing/subscription";
 
@@ -79,7 +79,7 @@ async function start(
     if (shouldCaptureAppErrorCode(code))
       console.error(
         "dashboard:first-audit startup failed",
-        { projectId, code },
+        { projectId, code, error: describeError(error) },
         error,
       );
     else
