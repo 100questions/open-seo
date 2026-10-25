@@ -70,7 +70,7 @@ export function AutoReloadNotice({
                 Auto-reload failed on {formatDate(saved.failure.at)}:{" "}
                 {CARD_FAILURES[saved.failure.reason] ?? "the charge failed"}.{" "}
                 {canRetry
-                  ? "Update your card, then retry below."
+                  ? "Update your card, then retry."
                   : "Update your card so it works the next time you run low."}
               </>
             ) : (
