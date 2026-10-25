@@ -4,7 +4,7 @@ import { SectionHeader } from "@/client/components/PageHeader";
 import { ThemePreferenceRadio } from "@/client/components/ThemePreferenceMenuItems";
 import { McpConnectionsSettings } from "@/client/features/settings/McpConnectionsSettings";
 import { PrivacySettings } from "@/client/features/settings/PrivacySettings";
-import { isHostedClientAuthMode } from "@/lib/auth-mode";
+import { isHostedClientAuthMode, usesBetterAuthClient } from "@/lib/auth-mode";
 import { version } from "../../../../package.json";
 
 export const Route = createFileRoute("/_app/settings/")({
@@ -13,6 +13,9 @@ export const Route = createFileRoute("/_app/settings/")({
 
 function PersonalSettings() {
   const isHosted = isHostedClientAuthMode();
+  // API keys need Better Auth accounts (hosted or the standalone Docker
+  // edition); the analytics choices only exist on hosted.
+  const hasAccounts = usesBetterAuthClient();
   return (
     <div className="space-y-10">
       <section className="space-y-3">
@@ -23,14 +26,12 @@ function PersonalSettings() {
         </div>
       </section>
 
+      {isHosted ? <McpConnectionsSettings /> : null}
+
+      {hasAccounts ? <ApiKeySettings /> : null}
+
       {isHosted ? (
-        <>
-          <McpConnectionsSettings />
-
-          <ApiKeySettings />
-
-          <PrivacySettings />
-        </>
+        <PrivacySettings />
       ) : (
         <section className="space-y-3">
           <SectionHeader title="About" />
