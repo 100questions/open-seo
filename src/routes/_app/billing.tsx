@@ -28,6 +28,7 @@ import {
   openUpgradeCheckout,
   prefetchUpgradeCheckout,
 } from "@/client/features/billing/checkout";
+import { AutoReloadSettings } from "@/client/features/billing/AutoReloadSettings";
 import { BillingTabs } from "@/client/features/billing/BillingTabs";
 import { parseTopUpAmount } from "@/client/features/billing/HostedBillingContentUtils";
 import { billingUsageQueryOptions } from "@/client/features/billing/useBillingUsage";
@@ -41,7 +42,12 @@ import {
   createBillingPortalSession,
   createTopUpCheckout,
 } from "@/serverFunctions/billing";
-import { BILLING_ROUTE, BILLING_TABS } from "@/shared/billing";
+import {
+  BILLING_ROUTE,
+  BILLING_TABS,
+  TOP_UP_MAX_USD,
+  TOP_UP_MIN_USD,
+} from "@/shared/billing";
 
 export const Route = createFileRoute("/_app/billing")({
   validateSearch: z.object({
@@ -91,8 +97,12 @@ function BillingPage() {
     isOutOfCredits,
     isLowCredits,
     refillDate,
+    autoReloadState,
   } = useCreditBalance();
   const account = accountQuery.data;
+  // The budget counts bought credits too, so a purchase now would sit
+  // unspent until it is raised; the notice below the button says so.
+  const budgetSpent = autoReloadState === "budget_spent";
 
   // Subscription changes are owner-only; other members see balances but are
   // pointed at the owner instead of checkout (the server enforces this too).
@@ -299,7 +309,16 @@ function BillingPage() {
               </CardContent>
             </Card>
 
-            {/* Buy credits card — paid plan only, owner-only */}
+            {/* Buy credits card — paid plan only, owner-only. The sync turns
+                auto-reload off when a plan ends; until that lands, an owner
+                who left the plan still sees it, so they can turn it off. */}
+            {isFreePlan && canManageBilling && account.autoReload?.enabled ? (
+              <Card>
+                <CardContent>
+                  <AutoReloadSettings />
+                </CardContent>
+              </Card>
+            ) : null}
             {!isFreePlan && canManageBilling ? (
               <Card>
                 <CardHeader>
@@ -315,8 +334,8 @@ function BillingPage() {
                       <InputGroupAddon>$</InputGroupAddon>
                       <InputGroupInput
                         type="number"
-                        min={10}
-                        max={99}
+                        min={TOP_UP_MIN_USD}
+                        max={TOP_UP_MAX_USD}
                         step={1}
                         inputMode="numeric"
                         aria-label="Top-up amount in USD"
@@ -326,7 +345,9 @@ function BillingPage() {
                       />
                     </InputGroup>
                     {showTopUpError ? (
-                      <FieldError>Enter between $10–$99.</FieldError>
+                      <FieldError>
+                        Enter between ${TOP_UP_MIN_USD}–${TOP_UP_MAX_USD}.
+                      </FieldError>
                     ) : null}
                   </Field>
 
@@ -334,7 +355,9 @@ function BillingPage() {
                     variant="secondary"
                     className="w-full"
                     pending={pendingAction === "topUp"}
-                    disabled={!isValidTopUp || pendingAction !== null}
+                    disabled={
+                      !isValidTopUp || pendingAction !== null || budgetSpent
+                    }
                     onClick={() =>
                       void runAction(
                         "topUp",
@@ -347,7 +370,17 @@ function BillingPage() {
                       ? "Redirecting to Stripe..."
                       : "Buy credits"}
                   </Button>
+                  {budgetSpent ? (
+                    <p className="text-xs text-muted-foreground">
+                      You&rsquo;ve hit your monthly auto-reload budget. Raise it
+                      below to buy more.
+                    </p>
+                  ) : null}
                   {actionError("topUp")}
+
+                  <div className="border-t border-border pt-4">
+                    <AutoReloadSettings />
+                  </div>
                 </CardContent>
               </Card>
             ) : null}
