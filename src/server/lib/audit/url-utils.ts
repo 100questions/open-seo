@@ -176,6 +176,11 @@ const SHOPIFY_NON_PAGE_PATHS =
  * themes link every gallery photo on the storefront origin, and one store's
  * audit spent 1,986 of its 2,608 fetches on them. Unknown extensions pass.
  * The trade: a broken link to such a file is no longer reported.
+ *
+ * Cloudflare's reserved `/cdn-cgi/` paths are skipped too. Its email
+ * obfuscation rewrites every mailto link to `/cdn-cgi/l/email-protection`,
+ * which answers crawlers with a 404, so a site with an email in its footer
+ * got one false broken link per page.
  */
 export function isAuditablePageUrl(
   url: string,
@@ -188,6 +193,7 @@ export function isAuditablePageUrl(
     return false;
   }
   if (NON_DOCUMENT_EXTENSIONS.test(parsed.pathname)) return false;
+  if (parsed.pathname.startsWith("/cdn-cgi/")) return false;
   return !(
     sitePlatform === "shopify" && SHOPIFY_NON_PAGE_PATHS.test(parsed.pathname)
   );

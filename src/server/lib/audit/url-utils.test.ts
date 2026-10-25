@@ -77,6 +77,7 @@ describe("isAuditablePageUrl", () => {
     ["https://example.com/discount/SAVE10?redirect=%2F", "shopify", false],
     ["https://example.com/discount/SAVE10", undefined, true],
     ["https://example.com/en/collections/all?page=2", "shopify", true],
+    ["https://example.com/cdn-cgi/l/email-protection", undefined, false],
   ] as const)("isAuditablePageUrl(%s, %s) is %s", (url, platform, expected) => {
     expect(isAuditablePageUrl(url, platform)).toBe(expected);
   });
