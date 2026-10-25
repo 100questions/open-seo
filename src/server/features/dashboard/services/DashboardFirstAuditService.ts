@@ -1,6 +1,7 @@
 import { waitUntil } from "cloudflare:workers";
 import { shouldCaptureAppErrorCode } from "@/shared/error-codes";
 import { AuditService } from "@/server/features/audit/services/AuditService";
+import { isAuditRenderingAllowed } from "@/server/lib/audit/rendering-policy";
 import { AuditRepository } from "@/server/features/audit/repositories/AuditRepository";
 import { DataRefreshClaimRepository } from "../repositories/DataRefreshClaimRepository";
 import { buildCacheKey } from "@/server/lib/r2-cache";
@@ -44,7 +45,9 @@ async function start(
       projectId,
       startUrl: `https://${domain}`,
       maxPages: 50,
-      renderJavaScript: true,
+      // Installs with no renderer (Docker without a Context key) crawl
+      // without JavaScript instead of failing the first audit.
+      renderJavaScript: await isAuditRenderingAllowed(),
       lighthouseStrategy: "none",
       limitTier,
     });
