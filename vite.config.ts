@@ -59,6 +59,8 @@ export default defineConfig(({ mode, command }) => {
     env.ALLOWED_HOST,
     env.BETTER_AUTH_URL ? new URL(env.BETTER_AUTH_URL).hostname : undefined,
   ].filter((host): host is string => Boolean(host));
+  // The production deploy sets this, tags the chunks it is about to ship, and
+  // uploads the maps to PostHog error tracking (see deploy-production.yml).
   const emitSourcemaps = env.POSTHOG_SOURCEMAPS === "true";
   // `vite build --mode standalone` produces the Docker edition: one server
   // module for celld (see deploy/standalone/) instead of the Workers pair.
@@ -92,7 +94,6 @@ export default defineConfig(({ mode, command }) => {
     },
     build: {
       sourcemap: emitSourcemaps,
-      outDir: emitSourcemaps ? "dist-sourcemaps" : "dist",
       rolldownOptions: {
         output: {
           // Emit every chunk as pure ASCII: Rolldown rewrites each non-ASCII
