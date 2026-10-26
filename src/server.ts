@@ -3,6 +3,8 @@ import {
   defaultStreamHandler,
 } from "@tanstack/react-start/server";
 import { routeAgentRequest } from "agents";
+import { everyApp } from "@every-app/sdk/server";
+import { serveEveryAppRequest } from "@/server/lib/gateway-attribution";
 import { resolveUserContextFromHeaders } from "@/middleware/ensure-user/resolve";
 import { ProjectRepository } from "@/server/features/projects/repositories/ProjectRepository";
 import { SamSessionRepository } from "@/server/features/sam/SamSessionRepository";
@@ -143,7 +145,41 @@ function fetch(
   return withPgClient(() => Promise.resolve(handleFetch(request, env, ctx)));
 }
 
-async function handleFetch(
+// AUTH_MODE=everyapp: OpenSEO is private behind an Every App gateway, which
+// signs the person's identity onto every request it forwards. Fail closed on
+// anything else before routing, then resolve users per request as the other
+// modes do. Gateway calls made while serving the request forward its
+// identity (gateway-attribution.ts). The gateway's tool calls
+// (`/__everyapp/tools/*`) load the MCP tools on first use only.
+async function handleEveryAppRequest(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+): Promise<Response> {
+  if (new URL(request.url).pathname.startsWith("/__everyapp/")) {
+    const { everyAppTools } = await import("@/server/everyapp/tools");
+    return everyAppTools.fetch(request, env, ctx);
+  }
+  // everyApp() also drops any Set-Cookie on the way out.
+  return everyApp<Env>((verified, _env, _ctx, user) =>
+    serveEveryAppRequest(verified, user, () =>
+      handleAppRequest(verified, env, ctx),
+    ),
+  ).fetch(request, env, ctx);
+}
+
+function handleFetch(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+): Response | Promise<Response> {
+  if (getAuthMode(env.AUTH_MODE) === "everyapp") {
+    return handleEveryAppRequest(request, env, ctx);
+  }
+  return handleAppRequest(request, env, ctx);
+}
+
+async function handleAppRequest(
   request: Request,
   env: Env,
   ctx: ExecutionContext,
@@ -275,6 +311,9 @@ export default {
       console.error("[cron] Stale-audit reconcile failed:", err);
     }
     // Scope a per-request Postgres client for the cron run (no-op in D1 mode).
+    // The cron itself calls no provider: it starts Workflows, each carrying
+    // the organization that owns the tracker, which every gateway call the
+    // run makes names (gateway-attribution.ts).
     const checks = await Promise.allSettled([
       withPgClient(() => runScheduledRankChecks(env)),
       withPgClient(async () => {

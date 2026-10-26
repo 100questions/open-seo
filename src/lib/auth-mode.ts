@@ -14,6 +14,9 @@ export const AUTH_MODES = [
   "local_noauth",
   "hosted",
   "password",
+  // Behind an Every App gateway, which signs each request's identity and
+  // holds the provider keys (docs/maintainers/every-app.md).
+  "everyapp",
 ] as const;
 
 type AuthMode = (typeof AUTH_MODES)[number];
@@ -76,12 +79,21 @@ export function runtimeAuthModeScript() {
   return `globalThis.__OPENSEO_AUTH_MODE__=${JSON.stringify(getClientAuthMode())}`;
 }
 
+export function isEveryAppAuthMode(value: string | null | undefined) {
+  return getAuthMode(value) === "everyapp";
+}
+
 export function isHostedClientAuthMode() {
   return getClientAuthMode() === "hosted";
 }
 
 export function usesBetterAuthClient() {
   return usesBetterAuth(getClientAuthMode());
+}
+
+export function isEveryAppClientAuthMode() {
+  // Same build-time contract as isHostedClientAuthMode above.
+  return isEveryAppAuthMode(import.meta.env.AUTH_MODE);
 }
 
 export function isEmailVerificationBypassed() {

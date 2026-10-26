@@ -46,3 +46,7 @@ dist/
 
 # built by `pnpm build:report-widgets` (predev/build)
 /src/public/report-widgets/
+# AUTH_MODE=everyapp: `pnpm dev:everyapp`'s local identity keys, and the
+# Cloudflare Vite plugin 2.x's build output and local state
+.everyapp/
+.cloudflare/
