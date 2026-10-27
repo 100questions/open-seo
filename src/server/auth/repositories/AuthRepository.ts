@@ -341,6 +341,19 @@ async function setProductUpdatesOptIn(
     .where(eq(authUser.id, userId));
 }
 
+async function renameOrganization(organizationId: string, name: string) {
+  await db
+    .update(organization)
+    .set({ name })
+    .where(eq(organization.id, organizationId));
+}
+
+// Hard delete. The foreign keys cascade it to the workspace's projects (and
+// everything they own), members, invitations and org-scoped connections.
+async function deleteOrganization(organizationId: string) {
+  await db.delete(organization).where(eq(organization.id, organizationId));
+}
+
 export const AuthRepository = {
   upsertDelegatedOrganization,
   findFirstOrganizationIdForUser,
@@ -361,4 +374,6 @@ export const AuthRepository = {
   hasAnyUser,
   isAnalyticsOptedOut,
   saveSignupCampaign,
+  renameOrganization,
+  deleteOrganization,
 } as const;

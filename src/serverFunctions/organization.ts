@@ -23,6 +23,13 @@ function refuseBehindEveryAppGateway() {
   if (isEveryAppAuthMode(env.AUTH_MODE)) throw new AppError("NOT_FOUND");
 }
 
+/** Workspace create/rename/delete is for self-hosted (password mode) installs. */
+function refuseOutsidePasswordMode() {
+  if (getAuthMode(env.AUTH_MODE) !== "password") {
+    throw new AppError("NOT_FOUND");
+  }
+}
+
 // The client's source of truth for "who am I in this organization": the active
 // org, the caller's role from their member row (resolved server-side by
 // ensure-user), and every organization they belong to (for the switcher). Used
@@ -229,7 +236,7 @@ const createWorkspaceSchema = z.object({
   name: z.string().trim().min(1).max(64),
 });
 
-// Self-hosted (password mode) only. Hosted gives every user exactly one
+// Hosted gives every user exactly one
 // workspace because each one carries its own billing grant (see auth-config.ts);
 // a self-hosted install has no billing, so owners and admins may split projects
 // into separate workspaces with their own teams. Created as a system action
@@ -238,9 +245,7 @@ export const createWorkspace = createServerFn({ method: "POST" })
   .middleware(requireAuthenticatedContext)
   .validator(createWorkspaceSchema)
   .handler(async ({ data, context }) => {
-    if (getAuthMode(env.AUTH_MODE) !== "password") {
-      throw new AppError("NOT_FOUND");
-    }
+    refuseOutsidePasswordMode();
     requireOrgPermission(context, { project: ["create"] });
 
     const workspace = await getAuth().api.createOrganization({
@@ -262,4 +267,67 @@ export const createWorkspace = createServerFn({ method: "POST" })
     );
 
     return { organizationId: workspace.id };
+  });
+
+const renameWorkspaceSchema = z.object({
+  name: z.string().trim().min(1).max(64),
+});
+
+// Self-hosted only, like createWorkspace. Owners and admins.
+export const renameWorkspace = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(renameWorkspaceSchema)
+  .handler(async ({ data, context }) => {
+    refuseOutsidePasswordMode();
+    requireOrgPermission(context, { organization: ["update"] });
+    await AuthRepository.renameOrganization(context.organizationId, data.name);
+    return { name: data.name };
+  });
+
+const deleteWorkspaceSchema = z.object({ confirmName: z.string() });
+
+// Self-hosted only, owner only. Hosted keeps organization deletion disabled
+// (auth-config.ts) because a fresh workspace there means a fresh billing
+// grant. The caller must type the workspace's name and keep at least one
+// other workspace, which they are switched into.
+export const deleteWorkspace = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(deleteWorkspaceSchema)
+  .handler(async ({ data, context }) => {
+    refuseOutsidePasswordMode();
+    requireOrgPermission(context, { organization: ["delete"] });
+
+    const memberships = await AuthRepository.listMembershipsForUser(
+      context.userId,
+    );
+    const workspace = memberships.find(
+      (membership) => membership.organizationId === context.organizationId,
+    );
+    if (!workspace || data.confirmName.trim() !== workspace.organizationName) {
+      throw new AppError(
+        "VALIDATION_ERROR",
+        "Type the workspace name to delete it.",
+      );
+    }
+    const next = memberships.find(
+      (membership) => membership.organizationId !== context.organizationId,
+    );
+    if (!next) {
+      throw new AppError(
+        "CONFLICT",
+        "You can't delete your only workspace. Create another one first.",
+      );
+    }
+
+    await AuthRepository.deleteOrganization(context.organizationId);
+    await getAuth().api.setActiveOrganization({
+      headers: getRequest().headers,
+      body: { organizationId: next.organizationId },
+    });
+    await AuthRepository.setLastActiveOrganization(
+      context.userId,
+      next.organizationId,
+    );
+
+    return { organizationId: next.organizationId };
   });

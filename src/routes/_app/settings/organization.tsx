@@ -1,5 +1,6 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { TeamSettings } from "@/client/features/team/TeamSettings";
+import { WorkspaceSettings } from "@/client/features/team/WorkspaceSettings";
 import { usesBetterAuthClient } from "@/lib/auth-mode";
 
 export const Route = createFileRoute("/_app/settings/organization")({
@@ -10,5 +11,14 @@ export const Route = createFileRoute("/_app/settings/organization")({
       throw notFound();
     }
   },
-  component: TeamSettings,
+  component: OrganizationSettings,
 });
+
+function OrganizationSettings() {
+  return (
+    <div className="space-y-8">
+      <WorkspaceSettings />
+      <TeamSettings />
+    </div>
+  );
+}
