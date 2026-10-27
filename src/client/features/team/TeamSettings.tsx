@@ -172,8 +172,9 @@ export function TeamSettings() {
         }
       />
       <p className="text-sm text-muted-foreground">
-        Teammates join as Admins. Admins have full access to each project except
-        for billing.
+        Admins have full access to each project except for billing. Members can
+        view every project and run research, but can't manage the team,
+        projects, or Google connections.
       </p>
       {orgContextQuery.isSuccess && !canManageTeam ? (
         <PermissionHint action="invite or remove teammates" />
