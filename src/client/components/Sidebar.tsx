@@ -11,10 +11,12 @@ import {
   CircleHelp,
   CreditCard,
   LogOut,
+  Plus,
   Settings,
   User,
 } from "lucide-react";
 import { organizationContextQueryOptions } from "@/client/features/team/organizationQueries";
+import { CreateWorkspaceModal } from "@/client/features/team/CreateWorkspaceModal";
 import { switchOrganization } from "@/serverFunctions/organization";
 import { clearLastProjectId } from "@/client/lib/active-project";
 import {
@@ -29,7 +31,8 @@ import {
 import { ThemePreferenceRadio } from "@/client/components/ThemePreferenceMenuItems";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import { signOutAndRedirect, useSession } from "@/lib/auth-client";
-import { isEveryAppClientAuthMode } from "@/lib/auth-mode";
+import { getClientAuthMode, isEveryAppClientAuthMode } from "@/lib/auth-mode";
+import { hasOrgPermission } from "@/lib/org-permissions";
 import { everyAppAccountQueryOptions } from "@/client/features/every-app/everyAppAccountQueries";
 import { BILLING_ROUTE } from "@/shared/billing";
 import {
@@ -256,6 +259,13 @@ function AccountFooter({ ready }: { ready: boolean }) {
     ? []
     : (orgContextQuery.data?.organizations ?? []);
   const activeOrganizationId = orgContextQuery.data?.organizationId;
+  // Self-hosted installs can split projects into workspaces (createWorkspace).
+  const canCreateWorkspace =
+    getClientAuthMode() === "password" &&
+    hasOrgPermission(orgContextQuery.data?.role ?? "member", {
+      project: ["create"],
+    });
+  const [isCreateWorkspaceOpen, setIsCreateWorkspaceOpen] = useState(false);
 
   async function handleSwitchOrganization(organizationId: string) {
     if (isSwitching || organizationId === activeOrganizationId) return;
@@ -303,32 +313,42 @@ function AccountFooter({ ready }: { ready: boolean }) {
                 </span>
               </DropdownMenuTrigger>
               <DropdownMenuContent side="top" className="w-56">
-                {organizations.length > 1 ? (
+                {organizations.length > 1 || canCreateWorkspace ? (
                   <>
                     <DropdownMenuGroup>
                       <DropdownMenuLabel className="flex items-center gap-1.5">
                         <ArrowLeftRight className="size-3" />
                         Organization
                       </DropdownMenuLabel>
-                      {organizations.map((organization) => (
+                      {(organizations.length > 1 ? organizations : []).map(
+                        (organization) => (
+                          <DropdownMenuItem
+                            key={organization.organizationId}
+                            disabled={isSwitching}
+                            onClick={() =>
+                              void handleSwitchOrganization(
+                                organization.organizationId,
+                              )
+                            }
+                          >
+                            <span className="truncate">
+                              {organization.organizationName}
+                            </span>
+                            {organization.organizationId ===
+                            activeOrganizationId ? (
+                              <Check className="ml-auto size-4" />
+                            ) : null}
+                          </DropdownMenuItem>
+                        ),
+                      )}
+                      {canCreateWorkspace ? (
                         <DropdownMenuItem
-                          key={organization.organizationId}
-                          disabled={isSwitching}
-                          onClick={() =>
-                            void handleSwitchOrganization(
-                              organization.organizationId,
-                            )
-                          }
+                          onClick={() => setIsCreateWorkspaceOpen(true)}
                         >
-                          <span className="truncate">
-                            {organization.organizationName}
-                          </span>
-                          {organization.organizationId ===
-                          activeOrganizationId ? (
-                            <Check className="ml-auto size-4" />
-                          ) : null}
+                          <Plus className="size-4" />
+                          New workspace
                         </DropdownMenuItem>
-                      ))}
+                      ) : null}
                     </DropdownMenuGroup>
                     <DropdownMenuSeparator />
                   </>
@@ -368,6 +388,11 @@ function AccountFooter({ ready }: { ready: boolean }) {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            {isCreateWorkspaceOpen ? (
+              <CreateWorkspaceModal
+                onClose={() => setIsCreateWorkspaceOpen(false)}
+              />
+            ) : null}
           </SidebarMenuItem>
         ) : ready ? (
           <SidebarNavLink
