@@ -1,0 +1,116 @@
+name: Deploy to VPS
+
+# Builds the standalone image from this fork and deploys it to srv3
+# (openseo.phamdangtruong.com). The VPS keeps its own deploy/standalone/.env;
+# nothing secret lives in the repository.
+#
+# Repository secrets:
+#   VPS_HOST         160.30.112.180
+#   VPS_USER         root
+#   VPS_SSH_KEY      private key whose public half is in the user's authorized_keys
+#   VPS_KNOWN_HOSTS  output of `ssh-keyscan -t ed25519 <host>`
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**/*.md"
+      - docs/**
+      - web/**
+      - .agents/**
+      - tests/badseo/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: deploy-vps
+  cancel-in-progress: false
+
+env:
+  IMAGE: ghcr.io/100questions/open-seo-standalone
+  APP_DIR: /opt/openseo
+
+jobs:
+  build:
+    if: github.repository == '100questions/open-seo'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/standalone/Dockerfile
+          push: true
+          platforms: linux/amd64
+          tags: |
+            ${{ env.IMAGE }}:latest
+            ${{ env.IMAGE }}:sha-${{ github.sha }}
+          labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure SSH
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_deploy
+          printf '%s\n' "${{ secrets.VPS_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/id_deploy ~/.ssh/known_hosts
+          printf 'Host vps\n  HostName %s\n  User %s\n  IdentityFile ~/.ssh/id_deploy\n  IdentitiesOnly yes\n' \
+            "${{ secrets.VPS_HOST }}" "${{ secrets.VPS_USER }}" > ~/.ssh/config
+
+      - name: Deploy
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          printf '%s\n' "$GHCR_TOKEN" | ssh vps \
+            "docker login ghcr.io -u '${{ github.actor }}' --password-stdin >/dev/null"
+          ssh vps APP_DIR='${{ env.APP_DIR }}' SHA='${{ github.sha }}' bash -s <<'EOF'
+          set -euo pipefail
+          cd "$APP_DIR"
+          git fetch -q origin main
+          git reset -q --hard "$SHA"
+          export COMPOSE_FILE=deploy/standalone/compose.yaml
+
+          # Back up before migrating, once there is something to back up.
+          if [ -n "$(docker compose ps -aq runtime)" ]; then
+            backup="/opt/openseo-backups/$(date +%Y%m%d-%H%M%S)-${SHA:0:7}"
+            /opt/openseo-tools/node/bin/node scripts/celld/backup.mjs backup "$backup"
+            ls -1dt /opt/openseo-backups/*/ | tail -n +6 | xargs -r rm -rf
+          fi
+
+          docker compose pull --quiet
+          docker compose stop web crawl-gateway runtime 2>/dev/null || true
+          docker compose up -d --remove-orphans
+          docker logout ghcr.io >/dev/null
+
+          for i in $(seq 1 60); do
+            if curl -fsS -o /dev/null http://127.0.0.1:3001/api/health; then
+              echo "OpenSEO is healthy at ${SHA:0:7}"
+              docker image prune -f >/dev/null
+              exit 0
+            fi
+            sleep 5
+          done
+          docker compose logs --tail 80 init runtime web
+          exit 1
+          EOF
+
+      - name: Remove SSH key
+        if: always()
+        run: rm -f ~/.ssh/id_deploy
