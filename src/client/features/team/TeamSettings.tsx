@@ -73,7 +73,17 @@ export function TeamSettings() {
   // the same link with a refreshed expiry.
   const resendMutation = useMutation({
     mutationKey: RESEND_KEY,
-    mutationFn: (email: string) => sendTeamInvitation({ data: { email } }),
+    mutationFn: (email: string) => {
+      const invitation = teamQuery.data?.pendingInvitations.find(
+        (pending) => pending.email === email,
+      );
+      return sendTeamInvitation({
+        data: {
+          email,
+          role: invitation?.role === "member" ? "member" : "admin",
+        },
+      });
+    },
     onSuccess: (result) => {
       captureClientEvent("team:invitation_resend");
       announceInvitation(result, "Invitation resent");

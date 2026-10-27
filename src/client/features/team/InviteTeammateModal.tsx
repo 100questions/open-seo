@@ -19,7 +19,22 @@ import { sendTeamInvitation } from "@/serverFunctions/organization";
 
 const inviteSchema = z.object({
   email: z.string().trim().email("Enter a valid email address."),
+  role: z.enum(["admin", "member"]),
 });
+
+type InviteRole = z.infer<typeof inviteSchema>["role"];
+
+const ROLE_OPTIONS: { value: InviteRole; label: string }[] = [
+  { value: "admin", label: "Admin" },
+  { value: "member", label: "Member" },
+];
+
+const ROLE_DESCRIPTIONS: Record<InviteRole, string> = {
+  admin:
+    "Full access to each project: can invite teammates, create and delete projects, and connect Google.",
+  member:
+    "Can view every project and run research, but can't manage the team, projects, or Google connections.",
+};
 
 export function inviteErrorMessage(error: Error) {
   const code = getErrorCode(error);
@@ -65,8 +80,8 @@ export function InviteTeammateModal({
   // Server function (not authClient.inviteMember): it enforces the daily send
   // limits and fails visibly when the invite email doesn't send.
   const inviteMutation = useMutation({
-    mutationFn: (inviteeEmail: string) =>
-      sendTeamInvitation({ data: { email: inviteeEmail } }),
+    mutationFn: (invite: { email: string; role: InviteRole }) =>
+      sendTeamInvitation({ data: invite }),
     onSuccess: (result) => {
       captureClientEvent("team:invitation_send");
       announceInvitation(result, "Invitation sent");
@@ -89,10 +104,14 @@ export function InviteTeammateModal({
   const sharesLink = usesBetterAuthClient() && !isHostedClientAuthMode();
 
   const form = useAppForm({
-    defaultValues: { email: "" },
+    defaultValues: { email: "", role: "admin" as InviteRole },
     validationLogic: revalidateLogic(),
     validators: { onDynamic: inviteSchema },
-    onSubmit: ({ value }) => inviteMutation.mutateAsync(value.email.trim()),
+    onSubmit: ({ value }) =>
+      inviteMutation.mutateAsync({
+        email: value.email.trim(),
+        role: value.role,
+      }),
   });
 
   return (
@@ -109,8 +128,8 @@ export function InviteTeammateModal({
               <DialogTitle>Invite a teammate</DialogTitle>
               <DialogDescription>
                 {sharesLink
-                  ? "They'll join as an Admin with full access to each project. Share the invitation link with them; they create their account from it. It expires in 7 days."
-                  : "They'll join as an Admin with full access to each project except for billing. The invitation link expires in 7 days."}
+                  ? "Share the invitation link with them; they create their account from it. It expires in 7 days."
+                  : "Nobody but the owner can manage billing. The invitation link expires in 7 days."}
               </DialogDescription>
             </DialogHeader>
             <form.AppField name="email">
@@ -121,6 +140,15 @@ export function InviteTeammateModal({
                   placeholder="teammate@company.com"
                   required
                   autoFocus
+                />
+              )}
+            </form.AppField>
+            <form.AppField name="role">
+              {(field) => (
+                <field.SelectField
+                  label="Role"
+                  description={ROLE_DESCRIPTIONS[field.state.value]}
+                  items={ROLE_OPTIONS}
                 />
               )}
             </form.AppField>
