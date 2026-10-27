@@ -36,6 +36,11 @@ services:
       CELLD_MAX_RESIDENT_CELLS: "64"
       CELLD_V8_HEAP_LIMIT_MB: "256"
       CELLD_MAX_REQUEST_BODY_BYTES: "33554432"
+      # celld stops a handler after this many seconds (default 300), and a
+      # Workflow run stopped that way is never resumed: site audits longer
+      # than five minutes stayed "running" forever. Rendered audits may crawl
+      # for 22 hours (RENDERED_CRAWL_TIME_LIMIT_HOURS), so allow a day.
+      CELLD_HANDLER_BUDGET_S: "86400"
       RUST_LOG: warn,cell_console=info
     mem_limit: 2g
     logging:
