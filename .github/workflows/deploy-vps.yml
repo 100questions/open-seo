@@ -1,14 +1,13 @@
 name: Deploy to VPS
 
-# Builds the standalone image from this fork and deploys it to srv3
-# (openseo.phamdangtruong.com). The VPS keeps its own deploy/standalone/.env;
-# nothing secret lives in the repository.
+# Builds the standalone image from this fork and deploys it to the VPS. The VPS
+# keeps its own deploy/standalone/.env; nothing secret lives in the repository.
 #
-# Repository secrets:
-#   VPS_HOST         160.30.112.180
-#   VPS_USER         root
-#   VPS_SSH_KEY      private key whose public half is in the user's authorized_keys
-#   VPS_KNOWN_HOSTS  output of `ssh-keyscan -t ed25519 <host>`
+# The deploy key is locked on the VPS to a forced command
+# (/opt/openseo-tools/deploy.sh): it can only deploy a commit that is already
+# on main, and cannot open a shell.
+#
+# Repository secrets: VPS_HOST, VPS_USER, VPS_SSH_KEY, VPS_KNOWN_HOSTS.
 
 on:
   push:
@@ -31,7 +30,6 @@ concurrency:
 
 env:
   IMAGE: ghcr.io/100questions/open-seo-standalone
-  APP_DIR: /opt/openseo
 
 jobs:
   build:
@@ -78,38 +76,8 @@ jobs:
         env:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          printf '%s\n' "$GHCR_TOKEN" | ssh vps \
-            "docker login ghcr.io -u '${{ github.actor }}' --password-stdin >/dev/null"
-          ssh vps APP_DIR='${{ env.APP_DIR }}' SHA='${{ github.sha }}' bash -s <<'EOF'
-          set -euo pipefail
-          cd "$APP_DIR"
-          git fetch -q origin main
-          git reset -q --hard "$SHA"
-          export COMPOSE_FILE=deploy/standalone/compose.yaml
-
-          # Back up before migrating, once there is something to back up.
-          if [ -n "$(docker compose ps -aq runtime)" ]; then
-            backup="/opt/openseo-backups/$(date +%Y%m%d-%H%M%S)-${SHA:0:7}"
-            /opt/openseo-tools/node/bin/node scripts/celld/backup.mjs backup "$backup"
-            ls -1dt /opt/openseo-backups/*/ | tail -n +6 | xargs -r rm -rf
-          fi
-
-          docker compose pull --quiet
-          docker compose stop web crawl-gateway runtime 2>/dev/null || true
-          docker compose up -d --remove-orphans
-          docker logout ghcr.io >/dev/null
-
-          for i in $(seq 1 60); do
-            if curl -fsS -o /dev/null http://127.0.0.1:3001/api/health; then
-              echo "OpenSEO is healthy at ${SHA:0:7}"
-              docker image prune -f >/dev/null
-              exit 0
-            fi
-            sleep 5
-          done
-          docker compose logs --tail 80 init runtime web
-          exit 1
-          EOF
+          printf '%s\n' "$GHCR_TOKEN" |
+            ssh vps "deploy ${{ github.sha }} ${{ github.actor }}"
 
       - name: Remove SSH key
         if: always()
