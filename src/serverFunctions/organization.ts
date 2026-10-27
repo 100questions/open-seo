@@ -4,7 +4,11 @@ import { APIError } from "better-auth/api";
 import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { getAuth, getHostedBaseUrl } from "@/lib/auth";
-import { isEveryAppAuthMode, isHostedAuthMode } from "@/lib/auth-mode";
+import {
+  getAuthMode,
+  isEveryAppAuthMode,
+  isHostedAuthMode,
+} from "@/lib/auth-mode";
 import { hasOrgPermission } from "@/lib/org-permissions";
 import { consumeInvitationSendBudget } from "@/server/auth/invitation-send-limit";
 import { requireOrgPermission } from "@/server/auth/org-gate";
@@ -219,4 +223,43 @@ export const transferOwnership = createServerFn({ method: "POST" })
     refuseBehindEveryAppGateway();
     await transferOrganizationOwnership(context, data.memberId);
     return { memberId: data.memberId };
+  });
+
+const createWorkspaceSchema = z.object({
+  name: z.string().trim().min(1).max(64),
+});
+
+// Self-hosted (password mode) only. Hosted gives every user exactly one
+// workspace because each one carries its own billing grant (see auth-config.ts);
+// a self-hosted install has no billing, so owners and admins may split projects
+// into separate workspaces with their own teams. Created as a system action
+// (userId, no headers), which allowUserToCreateOrganization does not block.
+export const createWorkspace = createServerFn({ method: "POST" })
+  .middleware(requireAuthenticatedContext)
+  .validator(createWorkspaceSchema)
+  .handler(async ({ data, context }) => {
+    if (getAuthMode(env.AUTH_MODE) !== "password") {
+      throw new AppError("NOT_FOUND");
+    }
+    requireOrgPermission(context, { project: ["create"] });
+
+    const workspace = await getAuth().api.createOrganization({
+      body: {
+        name: data.name,
+        slug: `ws-${crypto.randomUUID()}`,
+        userId: context.userId,
+      },
+    });
+    if (!workspace) throw new AppError("INTERNAL_ERROR");
+
+    await getAuth().api.setActiveOrganization({
+      headers: getRequest().headers,
+      body: { organizationId: workspace.id },
+    });
+    await AuthRepository.setLastActiveOrganization(
+      context.userId,
+      workspace.id,
+    );
+
+    return { organizationId: workspace.id };
   });
