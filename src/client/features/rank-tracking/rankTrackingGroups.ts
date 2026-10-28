@@ -3,6 +3,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import {
+  createRankTrackingGroup,
   deleteRankTrackingGroup,
   getRankTrackingGroups,
   updateRankTrackingGroup,
@@ -37,7 +38,7 @@ export function filterRowsByGroup(
   return rows.filter((row) => row.groupIds.includes(group));
 }
 
-/** Rename, recolor and delete groups, refreshing groups and keyword rows. */
+/** Create, rename, recolor and delete groups, refreshing what they change. */
 export function useRankTrackingGroupManage(projectId: string) {
   const queryClient = useQueryClient();
   const [busyGroupIds, setBusyGroupIds] = useState<Set<string>>(new Set());
@@ -54,6 +55,18 @@ export function useRankTrackingGroupManage(projectId: string) {
     queryClient.invalidateQueries({
       queryKey: ["rankTrackingGroups", projectId],
     });
+
+  const createGroup = async (name: string) => {
+    try {
+      await createRankTrackingGroup({ data: { projectId, name } });
+      await invalidateGroups();
+      toast.success("Group created");
+      return true;
+    } catch (error) {
+      toast.error(getStandardErrorMessage(error, "Could not create group"));
+      return false;
+    }
+  };
 
   const updateGroup = async (input: {
     tagId: string;
@@ -98,5 +111,5 @@ export function useRankTrackingGroupManage(projectId: string) {
     }
   };
 
-  return { busyGroupIds, updateGroup, deleteGroup };
+  return { busyGroupIds, createGroup, updateGroup, deleteGroup };
 }

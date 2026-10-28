@@ -121,6 +121,12 @@ export const estimateCostSchema = z.object({
   configId: z.string().uuid(),
 });
 
+const groupNameField = z
+  .string()
+  .trim()
+  .min(1)
+  .max(MAX_RANK_TRACKING_GROUP_NAME_LENGTH);
+
 export const addKeywordsSchema = z.object({
   projectId: z.string().uuid(),
   configId: z.string().uuid(),
@@ -129,6 +135,8 @@ export const addKeywordsSchema = z.object({
     .min(1)
     .max(2000),
   matchCase: z.boolean().optional(),
+  // Groups for the newly added keywords, by name; missing ones are created.
+  groupNames: z.array(groupNameField).max(50).optional(),
 });
 
 export const removeKeywordsSchema = z.object({
@@ -144,14 +152,13 @@ export const setKeywordsPinnedSchema = z.object({
   pinned: z.boolean(),
 });
 
-const groupNameField = z
-  .string()
-  .trim()
-  .min(1)
-  .max(MAX_RANK_TRACKING_GROUP_NAME_LENGTH);
-
 export const listGroupsSchema = z.object({
   projectId: z.string().uuid(),
+});
+
+export const createGroupSchema = z.object({
+  projectId: z.string().uuid(),
+  name: groupNameField,
 });
 
 export const updateGroupSchema = z

@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { RankTrackingGroupService } from "@/server/features/rank-tracking/services/RankTrackingGroupService";
 import { requireProjectContext } from "@/serverFunctions/middleware";
 import {
+  createGroupSchema,
   deleteGroupSchema,
   listGroupsSchema,
   updateGroupSchema,
@@ -13,6 +14,13 @@ export const getRankTrackingGroups = createServerFn({ method: "POST" })
   .validator(listGroupsSchema)
   .handler(async ({ context }) => {
     return RankTrackingGroupService.listGroups(context.projectId);
+  });
+
+export const createRankTrackingGroup = createServerFn({ method: "POST" })
+  .middleware(requireProjectContext)
+  .validator(createGroupSchema)
+  .handler(async ({ data, context }) => {
+    return RankTrackingGroupService.createGroup(context.projectId, data.name);
   });
 
 export const updateRankTrackingGroup = createServerFn({ method: "POST" })

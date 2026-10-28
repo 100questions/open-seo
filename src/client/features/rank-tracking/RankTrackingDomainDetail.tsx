@@ -135,7 +135,7 @@ export function RankTrackingDomainDetail({
 
   const latestRun = useRankRunPolling(projectId, config.id);
   const groupsQuery = useRankTrackingGroups(projectId);
-  const { busyGroupIds, updateGroup, deleteGroup } =
+  const { busyGroupIds, createGroup, updateGroup, deleteGroup } =
     useRankTrackingGroupManage(projectId);
 
   // Also feeds the History toggle: the matrix view only earns its tab once
@@ -287,6 +287,7 @@ export function RankTrackingDomainDetail({
             <AddKeywordsPanel
               configId={config.id}
               projectId={projectId}
+              groups={groups}
               onSuccess={handleKeywordsAdded}
               onCancel={() => setShowAddKeywords(false)}
             />
@@ -309,6 +310,7 @@ export function RankTrackingDomainDetail({
           value={search.group}
           onChange={(group) => onSearchChange({ group })}
           busyGroupIds={busyGroupIds}
+          onCreateGroup={createGroup}
           onUpdateGroup={(input) => void updateGroup(input)}
           onDeleteGroup={(groupId) => void deleteGroup(groupId)}
         />

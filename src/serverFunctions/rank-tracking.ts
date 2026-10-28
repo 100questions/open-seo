@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { waitUntil } from "cloudflare:workers";
 import { RankTrackingRepository } from "@/server/features/rank-tracking/repositories/RankTrackingRepository";
 import { RankTrackingService } from "@/server/features/rank-tracking/services/RankTrackingService";
+import { RankTrackingGroupService } from "@/server/features/rank-tracking/services/RankTrackingGroupService";
 import { RankTrackingKeywordService } from "@/server/features/rank-tracking/services/RankTrackingKeywordService";
 import { getLatestResults } from "@/server/features/rank-tracking/services/rankTrackingResults";
 import { AppError, asAppError } from "@/server/lib/errors";
@@ -224,6 +225,15 @@ export const addTrackingKeywords = createServerFn({ method: "POST" })
       { kind: "direct_user_action" },
       data.matchCase,
     );
+    if (data.groupNames?.length && result.addedIds.length > 0) {
+      await RankTrackingGroupService.updateKeywordGroups({
+        projectId: context.projectId,
+        configId: data.configId,
+        keywordIds: result.addedIds,
+        addGroupNames: data.groupNames,
+        removeGroupIds: [],
+      });
+    }
 
     const autoCheck =
       result.addedIds.length > 0
