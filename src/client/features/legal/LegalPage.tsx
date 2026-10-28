@@ -1,16 +1,19 @@
 import { Link } from "@tanstack/react-router";
 
 // The operator of this self-hosted installation, named on the Google OAuth
-// consent screen. Google requires the privacy policy and terms linked there to
-// live on the installation's own authorized domain.
+// consent screen. Google requires the home page, privacy policy and terms
+// linked there to live on the installation's own authorized domain and to be
+// readable without signing in.
 export const LEGAL_CONTACT_EMAIL = "benhviendonghovietnam@gmail.com";
 const LEGAL_LAST_UPDATED = "October 28, 2026";
 
 export function LegalPage({
   title,
+  showLastUpdated = true,
   children,
 }: {
   title: string;
+  showLastUpdated?: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -25,9 +28,11 @@ export function LegalPage({
           <span className="font-semibold">OpenSEO</span>
         </Link>
         <h1 className="pt-4 text-2xl font-semibold">{title}</h1>
-        <p className="text-muted-foreground">
-          Last updated: {LEGAL_LAST_UPDATED}
-        </p>
+        {showLastUpdated ? (
+          <p className="text-muted-foreground">
+            Last updated: {LEGAL_LAST_UPDATED}
+          </p>
+        ) : null}
         {children}
         <p className="pt-4 text-muted-foreground">
           Questions:{" "}
