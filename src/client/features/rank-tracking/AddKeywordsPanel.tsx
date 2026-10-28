@@ -1,21 +1,25 @@
 import { useId, useState } from "react";
 import { toast } from "sonner";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { addTrackingKeywords } from "@/serverFunctions/rank-tracking";
 import { MAX_TRACKED_KEYWORD_LENGTH } from "@/shared/rank-tracking";
 import { Button } from "@/client/components/ui/button";
 import { Checkbox } from "@/client/components/ui/checkbox";
 import { Label } from "@/client/components/ui/label";
 import { Textarea } from "@/client/components/ui/textarea";
+import { KeywordGroupPicker } from "./KeywordGroupPicker";
+import type { RankTrackingGroup } from "./rankTrackingGroups";
 
 export function AddKeywordsPanel({
   configId,
   projectId,
+  groups,
   onSuccess,
   onCancel,
 }: {
   configId: string;
   projectId: string;
+  groups: RankTrackingGroup[];
   onSuccess: (result: {
     added: number;
     checkTriggered: boolean;
@@ -26,13 +30,20 @@ export function AddKeywordsPanel({
   const matchCaseId = useId();
   const [keywordInput, setKeywordInput] = useState("");
   const [matchCase, setMatchCase] = useState(false);
+  const [groupNames, setGroupNames] = useState<string[]>([]);
+  const queryClient = useQueryClient();
   const mutation = useMutation({
     mutationFn: (kws: string[]) =>
       addTrackingKeywords({
-        data: { projectId, configId, keywords: kws, matchCase },
+        data: { projectId, configId, keywords: kws, matchCase, groupNames },
       }),
     onSuccess: (result) => {
       setKeywordInput("");
+      if (groupNames.length > 0) {
+        void queryClient.invalidateQueries({
+          queryKey: ["rankTrackingGroups", projectId],
+        });
+      }
       onSuccess(result);
     },
   });
@@ -62,6 +73,11 @@ export function AddKeywordsPanel({
             Match case
           </Label>
         </div>
+        <KeywordGroupPicker
+          groups={groups}
+          value={groupNames}
+          onChange={setGroupNames}
+        />
       </div>
       <div className="flex flex-col gap-1">
         <Button

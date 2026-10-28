@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { MAX_TRACKED_KEYWORD_LENGTH } from "@/shared/rank-tracking";
+import {
+  MAX_RANK_TRACKING_GROUP_NAME_LENGTH,
+  MAX_TRACKED_KEYWORD_LENGTH,
+} from "@/shared/rank-tracking";
+import { RankTrackingGroupService } from "@/server/features/rank-tracking/services/RankTrackingGroupService";
 import { RankTrackingService } from "@/server/features/rank-tracking/services/RankTrackingService";
 import type { BillingCustomerContext } from "@/server/billing/subscription";
 import { asAppError } from "@/server/lib/errors";
@@ -25,6 +29,13 @@ const inputSchema = {
     .optional()
     .describe(
       "Track the keywords exactly as typed instead of lowercasing them. Defaults to false. Use for brand names where Google's results differ by capitalization; a cased keyword is tracked and billed separately from its lowercase form.",
+    ),
+  groupNames: z
+    .array(z.string().trim().min(1).max(MAX_RANK_TRACKING_GROUP_NAME_LENGTH))
+    .max(50)
+    .optional()
+    .describe(
+      "Keyword groups to put the newly added keywords in, by name. Groups that don't exist yet are created. Keywords skipped as already tracked keep their groups; use group_rank_tracking_keywords for those.",
     ),
   maxEstimatedScheduledCheckCredits: z
     .number()
@@ -104,11 +115,20 @@ export const addRankTrackingKeywordsTool = {
       },
       args.matchCase,
     );
+    if (args.groupNames?.length && result.addedIds.length > 0) {
+      await RankTrackingGroupService.updateKeywordGroups({
+        projectId: args.projectId,
+        configId: args.trackerId,
+        keywordIds: result.addedIds,
+        addGroupNames: args.groupNames,
+        removeGroupIds: [],
+      });
+    }
     const requested = args.keywords.length;
     const metricsNote =
       result.added > 0 ? await fetchKeywordMetrics(args, context.billing) : "";
     return mcpResponse({
-      text: `Added ${result.added} of ${requested} requested keyword${requested === 1 ? "" : "s"} to tracker ${args.trackerId}. No check was started.${metricsNote}${result.scheduledEstimate ? ` Future ${result.scheduledEstimate.scheduleInterval} checks cost at most ${result.scheduledEstimate.costCredits} credits each, including retries (up to ~${result.scheduledEstimate.monthlyCostCredits} credits/month).` : ""}`,
+      text: `Added ${result.added} of ${requested} requested keyword${requested === 1 ? "" : "s"} to tracker ${args.trackerId}. No check was started.${args.groupNames?.length && result.added > 0 ? ` Grouped under: ${args.groupNames.join(", ")}.` : ""}${metricsNote}${result.scheduledEstimate ? ` Future ${result.scheduledEstimate.scheduleInterval} checks cost at most ${result.scheduledEstimate.costCredits} credits each, including retries (up to ~${result.scheduledEstimate.monthlyCostCredits} credits/month).` : ""}`,
       meta: buildProjectMeta(
         context,
         args.projectId,
