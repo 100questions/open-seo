@@ -1,3 +1,8 @@
+import { installAesKwFallback } from "./server/standalone/aes-kw-fallback";
+
+// Before any request: MCP sign-in needs AES-KW, which celld lacks.
+installAesKwFallback();
+
 // Keep all workflow and object classes in the same celld deployment: celld
 // does not support workflow bindings targeting another script.
 export {
