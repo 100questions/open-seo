@@ -23,6 +23,7 @@ function makeRow(
     keyword,
     matchCase: false,
     pinned: false,
+    groupIds: [],
     searchVolume: metrics.volume ?? null,
     keywordDifficulty: metrics.kd ?? null,
     cpc: metrics.cpc ?? null,

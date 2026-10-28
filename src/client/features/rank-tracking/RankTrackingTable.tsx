@@ -1,7 +1,8 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { FileDown, Plus, Sheet, Trash2 } from "lucide-react";
+import { FileDown, Plus, Sheet, Tags, Trash2 } from "lucide-react";
 import { ConfirmDialog } from "@/client/components/ConfirmDialog";
+import { BulkTagsModal } from "@/client/components/tags/BulkTagsModal";
 import { Button } from "@/client/components/ui/button";
 import { DataTable, useDataTable } from "@/client/components/table/DataTable";
 import {
@@ -12,6 +13,7 @@ import {
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { SortingState } from "@tanstack/react-table";
 import { removeTrackingKeywords } from "@/serverFunctions/rank-tracking";
+import { updateRankTrackingKeywordGroups } from "@/serverFunctions/rank-tracking-groups";
 import type { RankTrackingRow } from "@/types/schemas/rank-tracking";
 import {
   PINNED_COLUMN_ID,
@@ -24,10 +26,12 @@ import {
   type KeywordTrendTarget,
 } from "./KeywordTrendModal";
 import type { SelectionAnchor } from "@/client/components/table/tableSelection";
+import type { RankTrackingGroup } from "./rankTrackingGroups";
 
 export function RankTrackingTable({
   totalCount,
   rows,
+  groups,
   showDesktop,
   showMobile,
   sorting,
@@ -44,6 +48,7 @@ export function RankTrackingTable({
 }: {
   totalCount: number;
   rows: RankTrackingRow[];
+  groups: RankTrackingGroup[];
   showDesktop: boolean;
   showMobile: boolean;
   sorting: SortingState;
@@ -60,6 +65,7 @@ export function RankTrackingTable({
 }) {
   const queryClient = useQueryClient();
   const [showConfirm, setShowConfirm] = useState(false);
+  const [showGroups, setShowGroups] = useState(false);
   const [trendTarget, setTrendTarget] = useState<KeywordTrendTarget | null>(
     null,
   );
@@ -75,6 +81,10 @@ export function RankTrackingTable({
   );
 
   const setKeywordPinned = useSetKeywordPinned(projectId, configId);
+  const groupsById = useMemo(
+    () => new Map(groups.map((group) => [group.id, group])),
+    [groups],
+  );
   const columns = useRankTrackingColumns({
     showDesktop,
     showMobile,
@@ -82,6 +92,7 @@ export function RankTrackingTable({
     selectAnchorRef,
     onKeywordClick: handleKeywordClick,
     onSetPinned: setKeywordPinned,
+    groupsById,
     locationName,
   });
 
@@ -129,6 +140,33 @@ export function RankTrackingTable({
       scope: "selection",
     });
 
+  const selectedGroups = [
+    ...new Set(selectedRankRows.flatMap((row) => row.groupIds)),
+  ].flatMap((id) => groupsById.get(id) ?? []);
+
+  const groupMutation = useMutation({
+    mutationFn: (input: { addTags?: string[]; removeTagIds?: string[] }) =>
+      updateRankTrackingKeywordGroups({
+        data: {
+          projectId,
+          configId,
+          keywordIds: selectedRows.map((row) => row.id),
+          addGroupNames: input.addTags ?? [],
+          removeGroupIds: input.removeTagIds ?? [],
+        },
+      }),
+    onSuccess: () => {
+      setShowGroups(false);
+      void queryClient.invalidateQueries({
+        queryKey: ["rankTrackingResults", projectId, configId],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["rankTrackingGroups", projectId],
+      });
+      toast.success("Groups updated");
+    },
+  });
+
   const removeMutation = useMutation({
     mutationFn: (keywordIds: string[]) =>
       removeTrackingKeywords({ data: { projectId, configId, keywordIds } }),
@@ -155,6 +193,12 @@ export function RankTrackingTable({
         actions={
           <div className="flex items-center px-1.5">
             <TableBulkActionButton
+              icon={<Tags className="size-3.5" />}
+              onClick={() => setShowGroups(true)}
+            >
+              Group
+            </TableBulkActionButton>
+            <TableBulkActionButton
               icon={<Trash2 className="size-3.5" />}
               onClick={() => setShowConfirm(true)}
               variant="danger"
@@ -178,6 +222,18 @@ export function RankTrackingTable({
           </div>
         }
       />
+
+      {showGroups && (
+        <BulkTagsModal
+          noun="group"
+          availableTags={groups}
+          selectedCount={selectedCount}
+          selectedRowTags={selectedGroups}
+          isPending={groupMutation.isPending}
+          onClose={() => setShowGroups(false)}
+          onApply={(input) => groupMutation.mutate(input)}
+        />
+      )}
 
       {showConfirm && (
         <ConfirmDialog

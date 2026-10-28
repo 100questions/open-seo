@@ -25,13 +25,14 @@ import { TagChip, TagDot } from "./TagChip";
 
 type Mode = "add" | "remove";
 
-export function SavedKeywordsBulkTagsModal({
+export function BulkTagsModal({
   availableTags,
   selectedCount,
   selectedRowTags,
   isPending,
   onClose,
   onApply,
+  noun = "tag",
 }: {
   availableTags: SavedKeywordTagSummary[];
   selectedCount: number;
@@ -41,6 +42,7 @@ export function SavedKeywordsBulkTagsModal({
   isPending: boolean;
   onClose: () => void;
   onApply: (input: { addTags?: string[]; removeTagIds?: string[] }) => void;
+  noun?: "tag" | "group";
 }) {
   const [mode, setMode] = useState<Mode>("add");
   const [query, setQuery] = useState("");
@@ -119,9 +121,9 @@ export function SavedKeywordsBulkTagsModal({
     >
       <DialogContent showCloseButton={false} className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Update tags</DialogTitle>
+          <DialogTitle>Update {noun}s</DialogTitle>
           <DialogDescription>
-            Apply or remove tags across {selectedCount} selected keyword
+            Apply or remove {noun}s across {selectedCount} selected keyword
             {selectedCount !== 1 ? "s" : ""}.
           </DialogDescription>
         </DialogHeader>
@@ -136,10 +138,14 @@ export function SavedKeywordsBulkTagsModal({
           }}
           className="rounded-lg bg-muted p-0.5 ring-1 ring-border ring-inset"
         >
-          <SegmentItem value="add" label="Add tags" count={addNames.length} />
+          <SegmentItem
+            value="add"
+            label={`Add ${noun}s`}
+            count={addNames.length}
+          />
           <SegmentItem
             value="remove"
-            label="Remove tags"
+            label={`Remove ${noun}s`}
             count={removeIds.length}
             disabled={selectedRowTags.length === 0}
           />
@@ -185,7 +191,7 @@ export function SavedKeywordsBulkTagsModal({
               </InputGroupAddon>
               <InputGroupInput
                 ref={inputRef}
-                aria-label="Search or create a tag"
+                aria-label={`Search or create a ${noun}`}
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 onKeyDown={(event) => {
@@ -216,8 +222,8 @@ export function SavedKeywordsBulkTagsModal({
               {filteredAvailable.length === 0 && !showCreate ? (
                 <p className="px-3 py-6 text-center text-xs text-muted-foreground">
                   {availableTags.length === 0
-                    ? "No tags yet. Type a name above to create one."
-                    : "No tags match that search."}
+                    ? `No ${noun}s yet. Type a name above to create one.`
+                    : `No ${noun}s match that search.`}
                 </p>
               ) : null}
 
@@ -259,8 +265,9 @@ export function SavedKeywordsBulkTagsModal({
             </div>
             {removeIds.length > 0 ? (
               <p className="text-xs text-muted-foreground">
-                {removeIds.length} tag{removeIds.length !== 1 ? "s" : ""} will
-                be detached from the selected keywords.
+                {removeIds.length} {noun}
+                {removeIds.length !== 1 ? "s" : ""} will be detached from the
+                selected keywords.
               </p>
             ) : null}
           </div>

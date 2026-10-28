@@ -27,6 +27,7 @@ import * as listProjects from "./list-projects";
 import * as listSavedKeywords from "./list-saved-keywords";
 import * as localSeoTools from "./local-seo-tools";
 import * as pinRankTrackingKeywords from "./pin-rank-tracking-keywords";
+import * as rankTrackingGroupTools from "./rank-tracking-group-tools";
 import * as projectContext from "./project-context";
 import * as removeRankTrackingKeywords from "./remove-rank-tracking-keywords";
 import * as reportTemplateTools from "./report-template-tools";
@@ -55,6 +56,7 @@ const toolExports: Record<string, unknown> = {
   ...listSavedKeywords,
   ...localSeoTools,
   ...pinRankTrackingKeywords,
+  ...rankTrackingGroupTools,
   ...projectContext,
   ...removeRankTrackingKeywords,
   ...reportTemplateTools,

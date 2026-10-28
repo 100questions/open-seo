@@ -48,6 +48,7 @@ beforeAll(async () => {
       id INTEGER PRIMARY KEY, run_id TEXT, tracking_keyword_id TEXT, keyword TEXT,
       device TEXT, position INTEGER, url TEXT, serp_features TEXT, checked_at TEXT
     );
+    CREATE TABLE rank_tracking_keyword_groups (keyword_id TEXT, group_id TEXT);
     INSERT INTO rank_tracking_configs (id, project_id) VALUES ('config', 'project');
     INSERT INTO rank_tracking_keywords (id, config_id, keyword)
       VALUES ('keyword', 'config', 'example query');

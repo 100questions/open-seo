@@ -36,6 +36,10 @@ vi.mock("@/server/features/rank-tracking/services/RankTrackingService", () => ({
     triggerCheck: mocks.triggerCheck,
   },
 }));
+vi.mock(
+  "@/server/features/rank-tracking/services/RankTrackingGroupService",
+  () => ({ RankTrackingGroupService: { listGroups: async () => [] } }),
+);
 vi.mock("@/server/lib/posthog", () => ({
   captureServerEvent: mocks.captureServerEvent,
 }));
@@ -108,7 +112,7 @@ describe("rank tracking management MCP tools", () => {
         languageCode: "de",
         locationName: null,
       },
-      results: { rows: [{ keyword: "seo tool" }], run: null },
+      results: { rows: [{ keyword: "seo tool", groupIds: [] }], run: null },
     });
 
     const result = await getRankTrackerTool.handler(

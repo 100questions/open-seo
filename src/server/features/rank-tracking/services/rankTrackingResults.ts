@@ -1,3 +1,4 @@
+import { RankTrackingGroupRepository } from "@/server/features/rank-tracking/repositories/RankTrackingGroupRepository";
 import { RankTrackingRepository } from "@/server/features/rank-tracking/repositories/RankTrackingRepository";
 import { toRankTrackingTimestamp } from "@/server/features/rank-tracking/rankTrackingTimestamps";
 import { AppError } from "@/server/lib/errors";
@@ -37,8 +38,8 @@ export async function getLatestResults(
     new Date(Date.now() - days * 24 * 60 * 60 * 1000),
   );
 
-  // All four reads key off the inputs alone, so run them in one parallel round
-  // trip instead of four sequential ones — this endpoint is hot and the DB may
+  // All the reads key off the inputs alone, so run them in one parallel round
+  // trip instead of sequential ones — this endpoint is hot and the DB may
   // be a continent away. The project-scoped config lookup doubles as the
   // authorization gate for the configId-keyed reads racing alongside it: when
   // config is null, throw without returning anything from the other reads.
@@ -48,6 +49,7 @@ export async function getLatestResults(
     currentSnapshots,
     comparisonSnapshots,
     latestRun,
+    memberships,
   ] = await Promise.all([
     RankTrackingRepository.getConfigById({ configId, projectId }),
     RankTrackingRepository.getKeywordsForConfig(configId),
@@ -56,6 +58,7 @@ export async function getLatestResults(
     // Comparison snapshots from before the target date
     RankTrackingRepository.getSnapshotsBeforeDate(configId, targetDate),
     RankTrackingRepository.getLatestRunForConfig(configId),
+    RankTrackingGroupRepository.getMembershipsForConfig(configId),
   ]);
   if (!config) {
     throw new AppError("INTERNAL_ERROR", "Rank tracking config not found");
@@ -94,6 +97,13 @@ export async function getLatestResults(
     }
   }
 
+  const groupIdsByKeyword = new Map<string, string[]>();
+  for (const { keywordId, groupId } of memberships) {
+    const groupIds = groupIdsByKeyword.get(keywordId);
+    if (groupIds) groupIds.push(groupId);
+    else groupIdsByKeyword.set(keywordId, [groupId]);
+  }
+
   // Build result rows
   const rows = new Map<string, RankTrackingRow>(
     activeKeywords.map((keyword) => [
@@ -103,6 +113,7 @@ export async function getLatestResults(
         keyword: keyword.keyword,
         matchCase: keyword.matchCase,
         pinned: keyword.pinnedAt !== null,
+        groupIds: groupIdsByKeyword.get(keyword.id) ?? [],
         searchVolume: keyword.searchVolume,
         keywordDifficulty: keyword.keywordDifficulty,
         cpc: keyword.cpc,
