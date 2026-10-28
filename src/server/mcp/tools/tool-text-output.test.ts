@@ -67,6 +67,10 @@ vi.mock("@/server/features/rank-tracking/services/RankTrackingService", () => ({
     getConfigs: mocks.getConfigs,
   },
 }));
+vi.mock(
+  "@/server/features/rank-tracking/services/RankTrackingGroupService",
+  () => ({ RankTrackingGroupService: { listGroups: async () => [] } }),
+);
 vi.mock("@/server/features/ga4/services/Ga4ReportingService", () => ({
   Ga4ReportingService: { runReport: mocks.runGa4Report },
 }));
@@ -159,6 +163,7 @@ describe("MCP tool text output (service-backed tools)", () => {
         rows: [
           {
             keyword: "seo tools",
+            groupIds: [],
             desktop: { position: 3, previousPosition: 5 },
             mobile: { position: 7, previousPosition: null },
           },
@@ -182,6 +187,7 @@ describe("MCP tool text output (service-backed tools)", () => {
     const rows = Array.from({ length: 230 }, (_, index) => ({
       keyword: `keyword ${String(index).padStart(3, "0")}`,
       trackingKeywordId: `tracked-${index}`,
+      groupIds: [],
       desktop: {
         position: 3,
         previousPosition: 5,

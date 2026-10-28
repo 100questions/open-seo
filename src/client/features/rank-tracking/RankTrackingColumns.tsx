@@ -7,6 +7,7 @@ import { Badge } from "@/client/components/ui/badge";
 import { Button } from "@/client/components/ui/button";
 import { SortableHeader } from "@/client/components/table/SortableHeader";
 import type { RankTrackingRow } from "@/types/schemas/rank-tracking";
+import { TagChip } from "@/client/components/tags/TagChip";
 import { formatLocationLabel } from "@/shared/keyword-locations";
 import {
   CpcCell,
@@ -16,6 +17,7 @@ import {
   VolumeCell,
 } from "./RankTrackingTableParts";
 import type { SelectionAnchor } from "@/client/components/table/tableSelection";
+import type { RankTrackingGroup } from "./rankTrackingGroups";
 
 export const RANK_TRACKING_HEADER_CLASS =
   "text-xs uppercase tracking-wide text-muted-foreground";
@@ -105,9 +107,12 @@ const pinnedColumn: ColumnDef<RankTrackingRow> = {
   accessorFn: (row) => (row.pinned ? 0 : 1),
 };
 
+const MAX_GROUP_CHIPS = 3;
+
 function makeKeywordColumn(
   onKeywordClick: (row: RankTrackingRow) => void,
   onSetPinned: (vars: { trackingKeywordId: string; pinned: boolean }) => void,
+  groupsById: Map<string, RankTrackingGroup>,
 ): ColumnDef<RankTrackingRow> {
   return {
     id: "keyword",
@@ -149,10 +154,38 @@ function makeKeywordColumn(
             Aa
           </Badge>
         )}
+        <GroupChips groupIds={row.original.groupIds} groupsById={groupsById} />
       </div>
     ),
     sortingFn: "alphanumeric",
   };
+}
+
+function GroupChips({
+  groupIds,
+  groupsById,
+}: {
+  groupIds: string[];
+  groupsById: Map<string, RankTrackingGroup>;
+}) {
+  const groups = groupIds.flatMap((id) => groupsById.get(id) ?? []);
+  if (groups.length === 0) return null;
+  const hidden = groups.slice(MAX_GROUP_CHIPS);
+  return (
+    <span className="flex shrink-0 items-center gap-1">
+      {groups.slice(0, MAX_GROUP_CHIPS).map((group) => (
+        <TagChip key={group.id} tag={group} size="xs" />
+      ))}
+      {hidden.length > 0 ? (
+        <span
+          className="text-[11px] text-muted-foreground"
+          title={hidden.map((group) => group.name).join(", ")}
+        >
+          +{hidden.length}
+        </span>
+      ) : null}
+    </span>
+  );
 }
 
 function PinButton({
@@ -253,6 +286,7 @@ export function useRankTrackingColumns(options: {
   selectAnchorRef: MutableRefObject<SelectionAnchor | null>;
   onKeywordClick: (row: RankTrackingRow) => void;
   onSetPinned: (vars: { trackingKeywordId: string; pinned: boolean }) => void;
+  groupsById: Map<string, RankTrackingGroup>;
   locationName?: string | null;
 }): ColumnDef<RankTrackingRow>[] {
   const {
@@ -262,6 +296,7 @@ export function useRankTrackingColumns(options: {
     selectAnchorRef,
     onKeywordClick,
     onSetPinned,
+    groupsById,
     locationName,
   } = options;
   const locationLabel = locationName
@@ -271,7 +306,7 @@ export function useRankTrackingColumns(options: {
     const cols: ColumnDef<RankTrackingRow>[] = [
       pinnedColumn,
       makeSelectionColumn<RankTrackingRow>(selectAnchorRef),
-      makeKeywordColumn(onKeywordClick, onSetPinned),
+      makeKeywordColumn(onKeywordClick, onSetPinned, groupsById),
     ];
     if (showDesktop) {
       cols.push(makeDeviceColumn("desktop"));
@@ -296,6 +331,7 @@ export function useRankTrackingColumns(options: {
     selectAnchorRef,
     onKeywordClick,
     onSetPinned,
+    groupsById,
     locationLabel,
   ]);
 }

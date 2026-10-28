@@ -44,12 +44,22 @@ import { CheckConfirmModal } from "./CheckConfirmModal";
 import { useMetricsRefresh } from "./useMetricsRefresh";
 import { useRankCheckTrigger } from "./useRankCheckTrigger";
 import { useRankRunPolling } from "./useRankRunPolling";
+import { RankTrackingGroupTabs } from "./RankTrackingGroupTabs";
+import {
+  filterRowsByGroup,
+  useRankTrackingGroupManage,
+  useRankTrackingGroups,
+  type RankTrackingGroup,
+} from "./rankTrackingGroups";
 import {
   filterValuesFromSearch,
   filterValuesToSearch,
   normalizeFilterValues,
 } from "@/client/lib/filterSearchParams";
 import { useDebouncedDraft } from "@/client/hooks/useDebouncedDraft";
+
+// Stable while groups load, so the filtered rows memo doesn't recompute.
+const EMPTY_GROUPS: RankTrackingGroup[] = [];
 
 function deviceVisibility(
   devices: RankTrackingConfig["devices"],
@@ -124,6 +134,9 @@ export function RankTrackingDomainDetail({
   const resultsData = resultsQuery.data;
 
   const latestRun = useRankRunPolling(projectId, config.id);
+  const groupsQuery = useRankTrackingGroups(projectId);
+  const { busyGroupIds, updateGroup, deleteGroup } =
+    useRankTrackingGroupManage(projectId);
 
   // Also feeds the History toggle: the matrix view only earns its tab once
   // there are two checks to compare.
@@ -208,9 +221,14 @@ export function RankTrackingDomainDetail({
     config.devices,
     activeDevice,
   );
+  const groups = groupsQuery.data ?? EMPTY_GROUPS;
   const filtered = useMemo(
-    () => applyFilters(rows ?? [], filters),
-    [rows, filters],
+    () =>
+      applyFilters(
+        filterRowsByGroup(rows ?? [], groups, search.group),
+        filters,
+      ),
+    [rows, groups, search.group, filters],
   );
   const activeFilterCount = countActiveFilters(filters);
   const defaultSortId = showDesktop ? "desktopPosition" : "mobilePosition";
@@ -279,6 +297,17 @@ export function RankTrackingDomainDetail({
           />
         )}
 
+        <RankTrackingGroupTabs
+          groups={groups}
+          rows={rows ?? []}
+          device={showDesktop ? "desktop" : "mobile"}
+          value={search.group}
+          onChange={(group) => onSearchChange({ group })}
+          busyGroupIds={busyGroupIds}
+          onUpdateGroup={(input) => void updateGroup(input)}
+          onDeleteGroup={(groupId) => void deleteGroup(groupId)}
+        />
+
         {/* Table toolbar */}
         <RankTrackingTableToolbar
           showFilters={showFilters}
@@ -342,6 +371,7 @@ export function RankTrackingDomainDetail({
                   key={defaultSortId}
                   totalCount={results.rows.length}
                   rows={filtered}
+                  groups={groups}
                   showDesktop={showDesktop}
                   showMobile={showMobile}
                   sorting={

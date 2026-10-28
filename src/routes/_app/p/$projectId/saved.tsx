@@ -22,7 +22,7 @@ import { toast } from "sonner";
 import { QueryError } from "@/client/components/QueryState";
 import { TablePagination } from "@/client/components/table/TablePagination";
 import { SavedKeywordsBulkActionBar } from "@/client/features/saved-keywords/SavedKeywordsBulkActionBar";
-import { SavedKeywordsBulkTagsModal } from "@/client/features/saved-keywords/SavedKeywordsBulkTagsModal";
+import { BulkTagsModal } from "@/client/components/tags/BulkTagsModal";
 import { SavedKeywordsFilters } from "@/client/features/saved-keywords/SavedKeywordsFilters";
 import { SavedKeywordsHeader } from "@/client/features/saved-keywords/SavedKeywordsHeader";
 import {
@@ -410,7 +410,7 @@ function SavedKeywordsPage() {
         ) : null}
 
         {showTagModal ? (
-          <SavedKeywordsBulkTagsModal
+          <BulkTagsModal
             availableTags={availableTags}
             selectedCount={selectedCount}
             selectedRowTags={selectedRowTags}

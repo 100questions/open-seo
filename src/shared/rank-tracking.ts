@@ -45,6 +45,11 @@ export const SECONDS_PER_BATCH = 6;
 /** Soft application limit for keywords per rank tracking config */
 export const MAX_KEYWORDS_PER_CONFIG = 1000;
 
+/** Keyword groups a project can define, shared by all its trackers */
+export const MAX_RANK_TRACKING_GROUPS_PER_PROJECT = 100;
+
+export const MAX_RANK_TRACKING_GROUP_NAME_LENGTH = 60;
+
 /** Maximum length of a single tracked keyword */
 export const MAX_TRACKED_KEYWORD_LENGTH = 200;
 

@@ -16,7 +16,7 @@ import { SortableHeader } from "@/client/components/table/SortableHeader";
 import { ScoreBadge } from "@/client/components/table/ScoreBadge";
 import { IntentBadge } from "@/client/features/keywords/components";
 import type { KeywordIntent, SavedKeywordRow } from "@/types/keywords";
-import { TagChip } from "./TagChip";
+import { TagChip } from "@/client/components/tags/TagChip";
 import {
   formatSavedKeywordDate,
   formatSavedKeywordNumber,

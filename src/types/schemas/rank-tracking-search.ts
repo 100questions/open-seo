@@ -39,6 +39,8 @@ export const rankTrackingDetailSearchSchema = z.object({
     .optional()
     .catch(undefined),
   order: z.enum(["asc", "desc"]).optional().catch(undefined),
+  // A keyword group ID, or "ungrouped".
+  group: z.string().max(64).optional().catch(undefined),
   include: searchTextParam,
   exclude: searchTextParam,
   minDesktopPos: optionalSearchNumberParam,

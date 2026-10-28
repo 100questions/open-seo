@@ -16,6 +16,12 @@ vi.mock(
   "@/server/features/rank-tracking/repositories/RankTrackingRepository",
   () => ({ RankTrackingRepository: mocks }),
 );
+vi.mock(
+  "@/server/features/rank-tracking/repositories/RankTrackingGroupRepository",
+  () => ({
+    RankTrackingGroupRepository: { getMembershipsForConfig: async () => [] },
+  }),
+);
 
 describe("getLatestResults", () => {
   beforeEach(() => {

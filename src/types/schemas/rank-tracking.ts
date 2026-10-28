@@ -2,10 +2,14 @@ import type { InferSelectModel } from "drizzle-orm";
 import { z } from "zod";
 import { rankTrackingConfigs } from "@/db/schema";
 import { isSupportedLanguageCode } from "@/shared/keyword-locations";
-import { MAX_TRACKED_KEYWORD_LENGTH } from "@/shared/rank-tracking";
+import {
+  MAX_RANK_TRACKING_GROUP_NAME_LENGTH,
+  MAX_TRACKED_KEYWORD_LENGTH,
+} from "@/shared/rank-tracking";
 import { comparePeriodSchema } from "@/types/schemas/rank-tracking-search";
 import { domainField } from "@/types/schemas/domain";
 import { scheduleTimeSchema } from "@/types/schemas/schedule-time";
+import { TAG_COLOR_KEYS } from "@/shared/tag-colors";
 
 // ---------------------------------------------------------------------------
 // DB-derived types
@@ -40,6 +44,8 @@ export interface RankTrackingRow {
   keyword: string;
   matchCase: boolean;
   pinned: boolean;
+  /** Keyword groups (project-wide) this keyword belongs to. */
+  groupIds: string[];
   searchVolume: number | null;
   keywordDifficulty: number | null;
   cpc: number | null;
@@ -136,6 +142,40 @@ export const setKeywordsPinnedSchema = z.object({
   configId: z.string().uuid(),
   keywordIds: z.array(z.string().uuid()).min(1).max(2000),
   pinned: z.boolean(),
+});
+
+const groupNameField = z
+  .string()
+  .trim()
+  .min(1)
+  .max(MAX_RANK_TRACKING_GROUP_NAME_LENGTH);
+
+export const listGroupsSchema = z.object({
+  projectId: z.string().uuid(),
+});
+
+export const updateGroupSchema = z
+  .object({
+    projectId: z.string().uuid(),
+    groupId: z.string().uuid(),
+    name: groupNameField.optional(),
+    color: z.enum(TAG_COLOR_KEYS).nullable().optional(),
+  })
+  .refine((input) => input.name !== undefined || input.color !== undefined, {
+    message: "Provide a name or a color",
+  });
+
+export const deleteGroupSchema = z.object({
+  projectId: z.string().uuid(),
+  groupId: z.string().uuid(),
+});
+
+export const updateKeywordGroupsSchema = z.object({
+  projectId: z.string().uuid(),
+  configId: z.string().uuid(),
+  keywordIds: z.array(z.string().uuid()).min(1).max(2000),
+  addGroupNames: z.array(groupNameField).max(50),
+  removeGroupIds: z.array(z.string().uuid()).max(100),
 });
 
 export const refreshMetricsSchema = z.object({

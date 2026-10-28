@@ -236,6 +236,66 @@
         "destructive_justification": "Only sets or clears a pin marker. The same tool reverses it, and it deletes no data and starts no check or charge."
       }
     },
+    "list_rank_tracking_groups": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only lists the project's keyword groups and their keyword counts.",
+        "open_world_justification": "Operates only on private OpenSEO state and cannot change publicly visible internet state.",
+        "destructive_justification": "Only reads private OpenSEO state; it changes nothing."
+      }
+    },
+    "create_rank_tracking_group": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Creates a named keyword group in the project.",
+        "open_world_justification": "Operates only on private OpenSEO state and cannot change publicly visible internet state.",
+        "destructive_justification": "Only adds an empty group; the delete tool reverses it, and it starts no check or charge."
+      }
+    },
+    "update_rank_tracking_group": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Changes a keyword group's name or color.",
+        "open_world_justification": "Operates only on private OpenSEO state and cannot change publicly visible internet state.",
+        "destructive_justification": "Only renames or recolors the group; its keywords stay in it, and the same tool reverses it."
+      }
+    },
+    "delete_rank_tracking_group": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Deletes a keyword group.",
+        "open_world_justification": "Operates only on private OpenSEO state and cannot change publicly visible internet state.",
+        "destructive_justification": "Removes the group and its keywords' membership in it, although the keywords stay tracked with their history."
+      }
+    },
+    "group_rank_tracking_keywords": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Adds tracked keywords to a keyword group or removes them from it.",
+        "open_world_justification": "Operates only on private OpenSEO state and cannot change publicly visible internet state.",
+        "destructive_justification": "Only sets or clears group membership. The same tool reverses it, and it deletes no data and starts no check or charge."
+      }
+    },
     "estimate_rank_tracker_cost": {
       "annotations": {
         "readOnlyHint": true,

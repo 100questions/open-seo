@@ -1,7 +1,9 @@
 import { z } from "zod";
 import { sortBy } from "remeda";
+import { RankTrackingGroupService } from "@/server/features/rank-tracking/services/RankTrackingGroupService";
 import { RankTrackingService } from "@/server/features/rank-tracking/services/RankTrackingService";
 import { mcpResponse } from "@/server/mcp/formatters";
+import { AppError } from "@/server/lib/errors";
 import { buildProjectMeta } from "@/server/mcp/context";
 import {
   looseObjectOutputSchema,
@@ -38,6 +40,7 @@ const RANK_RESULT_COLUMNS: McpTableColumn<unknown>[] = [
     header: "pinned",
     value: (row) => (readPath(row, "pinned") === true ? "yes" : "no"),
   },
+  { header: "groups", value: (row) => readPath(row, "groupNames") },
   {
     // Both devices resolve to the same page in practice, so one column carries
     // whichever device actually ranked.
@@ -107,6 +110,13 @@ const inputSchema = {
     .describe(
       "Rank tracker config ID. If omitted, lists all rank trackers in the project.",
     ),
+  groupId: z
+    .string()
+    .uuid()
+    .optional()
+    .describe(
+      "Only return keywords in this keyword group (from list_rank_tracking_groups). Requires trackerId.",
+    ),
   offset: z
     .number()
     .int()
@@ -131,12 +141,13 @@ export const getRankTrackerTool = {
   config: {
     title: "Get rank tracker",
     description:
-      "Read-only access to rank tracker configs and their latest results. With `trackerId`, returns config + a page of latest snapshots (pinned keywords first), including `trackingKeywordId` for removals and pins, `pinned`, and `googleSerpUrl`, a live Google search for the tracked keyword, language, country, and city. Use offset/limit to read additional keywords. Without it, lists all trackers in the project. Uses no credits. Use create_rank_tracker when no tracker exists; then use add_rank_tracking_keywords, remove_rank_tracking_keywords, pin_rank_tracking_keywords, estimate_rank_tracker_cost, or run_rank_tracker to manage it. `lastCheckedAt` shows position freshness. A null position means the domain was not found in the results the check returned, which can be fewer than `serpDepth`, so it does not prove the domain ranks below `serpDepth`.",
+      "Read-only access to rank tracker configs and their latest results. With `trackerId`, returns config + a page of latest snapshots (pinned keywords first), including `trackingKeywordId` for removals, pins and groups, `pinned`, the keyword's `groupIds`, and `googleSerpUrl`, a live Google search for the tracked keyword, language, country, and city. Use offset/limit to read additional keywords, and groupId to read one keyword group. Without it, lists all trackers in the project. Uses no credits. Use create_rank_tracker when no tracker exists; then use add_rank_tracking_keywords, remove_rank_tracking_keywords, pin_rank_tracking_keywords, group_rank_tracking_keywords, estimate_rank_tracker_cost, or run_rank_tracker to manage it. `lastCheckedAt` shows position freshness. A null position means the domain was not found in the results the check returned, which can be fewer than `serpDepth`, so it does not prove the domain ranks below `serpDepth`.",
     inputSchema,
     outputSchema: z
       .object({
         configs: z.array(looseObjectOutputSchema).optional(),
         config: looseObjectOutputSchema.optional(),
+        groups: z.array(looseObjectOutputSchema).optional(),
         results: z
           .object({
             rows: z.array(looseObjectOutputSchema),
@@ -189,16 +200,25 @@ export const getRankTrackerTool = {
       });
     }
 
-    const { config, results } = await RankTrackingService.getTracker(
-      args.trackerId,
-      args.projectId,
-    );
+    const [{ config, results }, groups] = await Promise.all([
+      RankTrackingService.getTracker(args.trackerId, args.projectId),
+      RankTrackingGroupService.listGroups(args.projectId),
+    ]);
+    const groupNames = new Map(groups.map((group) => [group.id, group.name]));
+    const groupId = args.groupId;
+    const groupName = groupId ? groupNames.get(groupId) : undefined;
+    if (groupId && !groupName) {
+      throw new AppError("NOT_FOUND", "Keyword group not found");
+    }
+    const groupRows = groupId
+      ? results.rows.filter((row) => row.groupIds.includes(groupId))
+      : results.rows;
     const offset = args.offset ?? 0;
     const limit = args.limit ?? 100;
     // Pinned keywords first, as in the app's keyword table; the stable
     // tiebreakers keep offset pages from overlapping.
     const rows = sortBy(
-      results.rows,
+      groupRows,
       (row) => (row.pinned ? 0 : 1),
       (row) => row.keyword,
       (row) => row.trackingKeywordId,
@@ -206,13 +226,17 @@ export const getRankTrackerTool = {
       .slice(offset, offset + limit)
       .map((row) => ({
         ...row,
+        groupNames: row.groupIds
+          .map((id) => groupNames.get(id))
+          .filter(Boolean)
+          .join(", "),
         googleSerpUrl: googleSerpUrl(row.keyword, config),
       }));
-    const totalCount = results.rows.length;
+    const totalCount = groupRows.length;
     const nextOffset =
       offset + rows.length < totalCount ? offset + rows.length : null;
     const text = [
-      `Tracker ${config.id} (${config.domain}):`,
+      `Tracker ${config.id} (${config.domain})${groupName ? `, group "${groupName}"` : ""}:`,
       `Keyword page: offset=${offset}, limit=${limit}, ${rows.length} of ${totalCount} rows.${nextOffset !== null ? ` Next page: offset=${nextOffset}.` : ""} If text is truncated, repeat offset=${offset} with a smaller limit.`,
       `Schedule: ${config.scheduleInterval}, devices: ${config.devices}, depth: ${config.serpDepth}, location: ${formatLocation(config.locationCode, config.locationName)}, lang: ${config.languageCode}`,
       formatLatestRun(results.run),
@@ -232,6 +256,7 @@ export const getRankTrackerTool = {
       ),
       structuredContent: {
         config,
+        groups: groups.map(({ id, name }) => ({ id, name })),
         results: { ...results, rows, totalCount, offset, limit, nextOffset },
       },
     });
