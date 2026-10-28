@@ -30,10 +30,10 @@ export function filterRowsByGroup(
   groups: RankTrackingGroup[],
   group: string | undefined,
 ) {
+  // Without groups the tabs are hidden, so no filter may stay applied.
+  if (!group || groups.length === 0) return rows;
   if (group === UNGROUPED) return rows.filter((row) => !row.groupIds.length);
-  if (!group || !groups.some((candidate) => candidate.id === group)) {
-    return rows;
-  }
+  if (!groups.some((candidate) => candidate.id === group)) return rows;
   return rows.filter((row) => row.groupIds.includes(group));
 }
 
@@ -50,15 +50,10 @@ export function useRankTrackingGroupManage(projectId: string) {
       return next;
     });
 
-  const invalidate = () =>
-    Promise.all([
-      queryClient.invalidateQueries({
-        queryKey: ["rankTrackingGroups", projectId],
-      }),
-      queryClient.invalidateQueries({
-        queryKey: ["rankTrackingResults", projectId],
-      }),
-    ]);
+  const invalidateGroups = () =>
+    queryClient.invalidateQueries({
+      queryKey: ["rankTrackingGroups", projectId],
+    });
 
   const updateGroup = async (input: {
     tagId: string;
@@ -75,7 +70,8 @@ export function useRankTrackingGroupManage(projectId: string) {
           color: input.color,
         },
       });
-      await invalidate();
+      // Rows hold group IDs only; names and colors come from the groups query.
+      await invalidateGroups();
       toast.success("Group updated");
     } catch (error) {
       toast.error(getStandardErrorMessage(error, "Could not update group"));
@@ -88,7 +84,12 @@ export function useRankTrackingGroupManage(projectId: string) {
     markBusy(groupId, true);
     try {
       await deleteRankTrackingGroup({ data: { projectId, groupId } });
-      await invalidate();
+      await Promise.all([
+        invalidateGroups(),
+        queryClient.invalidateQueries({
+          queryKey: ["rankTrackingResults", projectId],
+        }),
+      ]);
       toast.success("Group deleted");
     } catch (error) {
       toast.error(getStandardErrorMessage(error, "Could not delete group"));

@@ -181,6 +181,12 @@ export const getRankTrackerTool = {
   },
   handler: withMcpProjectAuth(async (args: Args, context) => {
     if (!args.trackerId) {
+      if (args.groupId) {
+        throw new AppError(
+          "VALIDATION_ERROR",
+          "groupId filters one tracker's keywords; pass trackerId too",
+        );
+      }
       const configs = await RankTrackingService.getConfigs(args.projectId);
       const text =
         configs.length === 0

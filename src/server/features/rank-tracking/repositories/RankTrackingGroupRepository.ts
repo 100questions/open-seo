@@ -99,18 +99,24 @@ async function getMembershipsForConfig(configId: string) {
     .where(eq(rankTrackingKeywords.configId, configId));
 }
 
-async function addKeywordsToGroup(groupId: string, keywordIds: string[]) {
-  const addedIds: string[] = [];
-  for (let i = 0; i < keywordIds.length; i += MEMBERSHIP_INSERT_BATCH_SIZE) {
-    const chunk = keywordIds.slice(i, i + MEMBERSHIP_INSERT_BATCH_SIZE);
-    const added = await db
-      .insert(rankTrackingKeywordGroups)
-      .values(chunk.map((keywordId) => ({ keywordId, groupId })))
-      .onConflictDoNothing()
-      .returning({ keywordId: rankTrackingKeywordGroups.keywordId });
-    addedIds.push(...added.map((row) => row.keywordId));
+async function addMemberships(
+  memberships: { keywordId: string; groupId: string }[],
+) {
+  const added: { keywordId: string; groupId: string }[] = [];
+  for (let i = 0; i < memberships.length; i += MEMBERSHIP_INSERT_BATCH_SIZE) {
+    const chunk = memberships.slice(i, i + MEMBERSHIP_INSERT_BATCH_SIZE);
+    added.push(
+      ...(await db
+        .insert(rankTrackingKeywordGroups)
+        .values(chunk)
+        .onConflictDoNothing()
+        .returning({
+          keywordId: rankTrackingKeywordGroups.keywordId,
+          groupId: rankTrackingKeywordGroups.groupId,
+        })),
+    );
   }
-  return addedIds;
+  return added;
 }
 
 async function removeKeywordsFromGroup(groupId: string, keywordIds: string[]) {
@@ -137,6 +143,6 @@ export const RankTrackingGroupRepository = {
   updateGroup,
   deleteGroup,
   getMembershipsForConfig,
-  addKeywordsToGroup,
+  addMemberships,
   removeKeywordsFromGroup,
 };

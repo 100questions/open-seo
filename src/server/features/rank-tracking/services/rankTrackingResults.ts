@@ -99,10 +99,9 @@ export async function getLatestResults(
 
   const groupIdsByKeyword = new Map<string, string[]>();
   for (const { keywordId, groupId } of memberships) {
-    groupIdsByKeyword.set(keywordId, [
-      ...(groupIdsByKeyword.get(keywordId) ?? []),
-      groupId,
-    ]);
+    const groupIds = groupIdsByKeyword.get(keywordId);
+    if (groupIds) groupIds.push(groupId);
+    else groupIdsByKeyword.set(keywordId, [groupId]);
   }
 
   // Build result rows

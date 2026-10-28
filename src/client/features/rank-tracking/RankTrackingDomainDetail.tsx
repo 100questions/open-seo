@@ -231,6 +231,11 @@ export function RankTrackingDomainDetail({
     [rows, groups, search.group, filters],
   );
   const activeFilterCount = countActiveFilters(filters);
+  // A group tab can be empty for this tracker, so clearing leaves it too.
+  const clearFilters = () => {
+    setFilters(EMPTY_FILTERS);
+    onSearchChange({ group: undefined });
+  };
   const defaultSortId = showDesktop ? "desktopPosition" : "mobilePosition";
   // A position sort for the hidden device falls back to the default.
   const sortId =
@@ -358,7 +363,7 @@ export function RankTrackingDomainDetail({
                 trackingKeywordId: r.trackingKeywordId,
                 keyword: r.keyword,
               }))}
-              onClearFilters={() => setFilters(EMPTY_FILTERS)}
+              onClearFilters={clearFilters}
             />
           ) : (
             <QueryState
@@ -395,7 +400,7 @@ export function RankTrackingDomainDetail({
                   locationName={config.locationName}
                   serpDepth={config.serpDepth}
                   onAddKeywords={() => setShowAddKeywords(true)}
-                  onClearFilters={() => setFilters(EMPTY_FILTERS)}
+                  onClearFilters={clearFilters}
                 />
               )}
             </QueryState>

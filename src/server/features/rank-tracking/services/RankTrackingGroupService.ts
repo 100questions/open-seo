@@ -129,7 +129,11 @@ async function setKeywordsInGroup(input: {
   ]);
   const group = requireGroup(groups, input.groupId);
   const updatedIds = input.inGroup
-    ? await RankTrackingGroupRepository.addKeywordsToGroup(group.id, keywordIds)
+    ? (
+        await RankTrackingGroupRepository.addMemberships(
+          keywordIds.map((keywordId) => ({ keywordId, groupId: group.id })),
+        )
+      ).map((membership) => membership.keywordId)
     : await RankTrackingGroupRepository.removeKeywordsFromGroup(
         group.id,
         keywordIds,
@@ -174,9 +178,11 @@ async function updateKeywordGroups(input: {
     addGroupIds.push(created.id);
   }
 
-  for (const groupId of addGroupIds) {
-    await RankTrackingGroupRepository.addKeywordsToGroup(groupId, keywordIds);
-  }
+  await RankTrackingGroupRepository.addMemberships(
+    addGroupIds.flatMap((groupId) =>
+      keywordIds.map((keywordId) => ({ keywordId, groupId })),
+    ),
+  );
   for (const group of removeGroups) {
     await RankTrackingGroupRepository.removeKeywordsFromGroup(
       group.id,

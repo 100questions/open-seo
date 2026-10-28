@@ -1,30 +1,43 @@
 import { Settings2 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { TagDot } from "@/client/components/tags/TagChip";
 import { TagManagerDialog } from "@/client/components/tags/TagManagerDialog";
 import { Button } from "@/client/components/ui/button";
 import type { TagColorKey } from "@/shared/tag-colors";
 import type { RankTrackingRow } from "@/types/schemas/rank-tracking";
-import {
-  filterRowsByGroup,
-  UNGROUPED,
-  type RankTrackingGroup,
-} from "./rankTrackingGroups";
+import { UNGROUPED, type RankTrackingGroup } from "./rankTrackingGroups";
 
-/** Keyword count, average position and top-10 count for one device. */
-function groupStats(rows: RankTrackingRow[], device: "desktop" | "mobile") {
-  const positions = rows
-    .map((row) => row[device].position)
-    .filter((position) => position !== null);
-  const average =
-    positions.length > 0
-      ? positions.reduce((sum, position) => sum + position, 0) /
-        positions.length
-      : null;
-  return {
-    count: rows.length,
-    average,
-    top10: positions.filter((position) => position <= 10).length,
+const ALL = "all";
+
+/**
+ * Keyword count, average position and top-10 count per tab for one device,
+ * in a single pass over the rows. Keys: ALL, UNGROUPED and each group ID.
+ */
+function tabStats(rows: RankTrackingRow[], device: "desktop" | "mobile") {
+  const buckets = new Map<string, { count: number; positions: number[] }>();
+  const add = (key: string, position: number | null) => {
+    const bucket = buckets.get(key) ?? { count: 0, positions: [] };
+    bucket.count += 1;
+    if (position !== null) bucket.positions.push(position);
+    buckets.set(key, bucket);
+  };
+  for (const row of rows) {
+    const position = row[device].position;
+    add(ALL, position);
+    if (row.groupIds.length === 0) add(UNGROUPED, position);
+    for (const groupId of row.groupIds) add(groupId, position);
+  }
+  return (key: string) => {
+    const { count = 0, positions = [] } = buckets.get(key) ?? {};
+    return {
+      count,
+      average:
+        positions.length > 0
+          ? positions.reduce((sum, position) => sum + position, 0) /
+            positions.length
+          : null,
+      top10: positions.filter((position) => position <= 10).length,
+    };
   };
 }
 
@@ -52,6 +65,7 @@ export function RankTrackingGroupTabs({
   onDeleteGroup: (groupId: string) => void;
 }) {
   const [managing, setManaging] = useState(false);
+  const statsFor = useMemo(() => tabStats(rows, device), [rows, device]);
   if (groups.length === 0) return null;
 
   const active =
@@ -72,10 +86,7 @@ export function RankTrackingGroupTabs({
         className="flex min-w-0 flex-1 gap-1 overflow-x-auto"
       >
         {tabs.map((tab) => {
-          const stats = groupStats(
-            filterRowsByGroup(rows, groups, tab.key),
-            device,
-          );
+          const stats = statsFor(tab.key ?? ALL);
           return (
             <Button
               key={tab.key ?? "all"}

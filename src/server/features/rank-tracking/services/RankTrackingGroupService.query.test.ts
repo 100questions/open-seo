@@ -1,26 +1,27 @@
 import { readFileSync } from "node:fs";
-import { createClient, type Client } from "@libsql/client";
-import { drizzle } from "drizzle-orm/libsql";
+import type { Client } from "@libsql/client";
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
-import type * as RankTrackingGroupServiceModule from "./RankTrackingGroupService";
+import { RankTrackingGroupService } from "./RankTrackingGroupService";
 
 // Real in-memory SQLite with the shipped migration, so the case-insensitive
 // unique name index and the membership primary key run as in production.
 
+const runtime = vi.hoisted(() => ({ client: null as Client | null }));
+
 vi.mock("cloudflare:workers", () => ({
   env: { DATABASE_PROVIDER: "d1" },
 }));
+vi.mock("@/db", async () => {
+  const { createClient } = await import("@libsql/client");
+  const { drizzle } = await import("drizzle-orm/libsql");
+  runtime.client = createClient({ url: "file::memory:" });
+  return { db: drizzle(runtime.client) };
+});
 
 let client: Client;
-let RankTrackingGroupService: typeof RankTrackingGroupServiceModule.RankTrackingGroupService;
 
 beforeAll(async () => {
-  client = createClient({ url: "file::memory:" });
-  const testDb = drizzle(client);
-  // The db mock needs the client created above, so the service is imported
-  // after it rather than statically.
-  vi.doMock("@/db", () => ({ db: testDb }));
-
+  client = runtime.client!;
   await client.executeMultiple(`
     CREATE TABLE projects (id TEXT PRIMARY KEY);
     CREATE TABLE rank_tracking_configs (
@@ -58,8 +59,6 @@ beforeAll(async () => {
       "utf8",
     ).replaceAll("--> statement-breakpoint", ""),
   );
-
-  ({ RankTrackingGroupService } = await import("./RankTrackingGroupService"));
 });
 
 afterAll(() => {
